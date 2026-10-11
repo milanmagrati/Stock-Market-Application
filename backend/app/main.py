@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.ml.seed_data import seed_database
+from app.partitions import setup_native_partitions
 from app.crawler.scheduler import crawler_queue
 from app.api.websocket import ws_manager, ws_router
 from app.api.auth import auth_router
@@ -19,9 +20,10 @@ from app.api.reports import reports_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Initialize database tables
+    # 1. Initialize database tables & PostgreSQL native partitions
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await setup_native_partitions(conn)
 
     # 2. Seed database with initial watchlist, users, 30d OHLCV, floorsheets, news
     async with AsyncSessionLocal() as session:
@@ -59,9 +61,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse, FileResponse
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
 # Centralized Validation and Error Handling
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404 and not request.url.path.startswith(("/api", "/ws")):
+        index_file = frontend_dist / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -71,6 +83,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             "detail": exc.detail
         }
     )
+
 
 from fastapi.encoders import jsonable_encoder
 
@@ -114,10 +127,7 @@ async def health_check():
     }
 
 # Mount static frontend production build if available
-from pathlib import Path
-from fastapi.staticfiles import StaticFiles
-
-frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+
 

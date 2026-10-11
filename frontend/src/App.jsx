@@ -127,7 +127,9 @@ function DashboardContent() {
 
   // 3. Setup WebSocket connection for live telemetry
   useEffect(() => {
-    const wsUrl = "ws://localhost:8000/ws/updates";
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const defaultWsHost = window.location.host.includes("localhost:5173") ? "localhost:8000" : window.location.host;
+    const wsUrl = import.meta.env.VITE_WS_URL || `${protocol}//${defaultWsHost}/ws/updates`;
     const socket = new WebSocket(wsUrl);
     wsRef.current = socket;
 

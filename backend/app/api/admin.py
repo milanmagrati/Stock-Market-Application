@@ -178,3 +178,23 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     return {"success": True, "message": f"User account '{user.email}' removed successfully"}
+
+from app.partitions import get_partition_telemetry
+
+@admin_router.get("/partitions")
+async def get_partitions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.VIEWER))
+):
+    """
+    Inspect PostgreSQL native table partitioning status and active partition bounds.
+    """
+    conn = await db.connection()
+    partitions = await get_partition_telemetry(conn)
+    return {
+        "engine": db.bind.dialect.name,
+        "is_partitioned": len(partitions) > 0,
+        "total_partitions": len(partitions),
+        "partitions": partitions
+    }
+

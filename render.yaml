@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: omway-nepse-intelligence
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: PROJECT_NAME
+        value: "NEPSE Stock Market Intelligence"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: DATABASE_URL
+        value: "postgresql+psycopg://postgres.iiqroreouvctigndyxxf:Stock2026%40%40%23%23@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+      - key: SUPABASE_DB_HOST
+        value: "aws-0-ap-southeast-1.pooler.supabase.com"
+      - key: SUPABASE_DB_PORT
+        value: "5432"
+      - key: SUPABASE_DB_NAME
+        value: "postgres"
+      - key: SUPABASE_DB_USER
+        value: "postgres.iiqroreouvctigndyxxf"
+      - key: SUPABASE_DB_PASSWORD
+        value: "Stock2026@@##"
+      - key: SUPABASE_URL
+        value: "https://iiqroreouvctigndyxxf.supabase.co"
+      - key: REDIS_URL
+        value: "redis://localhost:6379/0"
+      - key: CRAWL_INTERVAL_MINUTES
+        value: "60"
+      - key: DEFAULT_USER_AGENT
+        value: "OmwayStockBot/1.0 (+https://omwaytech.com/bot; research@omwaytech.com)"
+      - key: REQUEST_TIMEOUT_SECONDS
+        value: "15.0"
+      - key: PER_DOMAIN_RATE_LIMIT_SECONDS
+        value: "2.0"
+      - key: VOLUME_ANOMALY_ZSCORE_THRESHOLD
+        value: "2.0"
+      - key: ROLLING_WINDOW_DAYS
+        value: "20"

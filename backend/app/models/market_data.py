@@ -6,9 +6,9 @@ from app.database import Base
 class OHLCV(Base):
     __tablename__ = "ohlcv_data"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
-    date = Column(Date, nullable=False, index=True)
+    date = Column(Date, primary_key=True, nullable=False, index=True)
     open = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
@@ -23,15 +23,16 @@ class OHLCV(Base):
 
     __table_args__ = (
         Index("idx_ohlcv_company_date", "company_id", "date", unique=True),
+        {"postgresql_partition_by": "RANGE (date)"},
     )
 
 
 class Floorsheet(Base):
     __tablename__ = "floorsheets"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
-    date = Column(Date, nullable=False, index=True)
+    date = Column(Date, primary_key=True, nullable=False, index=True)
     contract_no = Column(String(50), nullable=True)
     buyer_broker = Column(String(50), nullable=False, index=True)
     seller_broker = Column(String(50), nullable=False, index=True)
@@ -46,4 +47,6 @@ class Floorsheet(Base):
     __table_args__ = (
         Index("idx_floorsheet_company_date", "company_id", "date"),
         Index("idx_floorsheet_buyer_seller", "buyer_broker", "seller_broker"),
+        {"postgresql_partition_by": "RANGE (date)"},
     )
+

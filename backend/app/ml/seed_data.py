@@ -241,12 +241,15 @@ async def seed_database(db: AsyncSession):
     # 3. Seed News Articles and Multi-Label Tags if empty
     existing_news = await db.execute(select(func.count(NewsArticle.id)))
     if existing_news.scalar() == 0:
+        comp_res = await db.execute(select(Company))
+        companies = comp_res.scalars().all()
         article_objs = []
         tags_to_add = []
         article_id_counter = 1
 
-        for i in range(25):
-            comp1 = random.choice(companies)
+        if companies:
+            for i in range(25):
+                comp1 = random.choice(companies)
             # Sometimes multi-label (two companies mentioned together in an industry roundup)
             multi_company = (i % 3 == 0)
             comp2 = random.choice([c for c in companies if c.id != comp1.id]) if multi_company else None
