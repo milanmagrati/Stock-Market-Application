@@ -12,7 +12,10 @@ import {
   Users, 
   Lock, 
   Server, 
-  FileWarning 
+  FileWarning,
+  CheckCircle2,
+  AlertTriangle,
+  X
 } from "lucide-react";
 
 const PORTALS = [
@@ -29,7 +32,9 @@ export const AdminOpsCenter = () => {
   const [selectedPortal, setSelectedPortal] = useState("all");
   const [selectedType, setSelectedType] = useState("NEWS");
   const [loading, setLoading] = useState(false);
-  const [actionMsg, setActionMsg] = useState("");
+  const [dispatchSuccess, setDispatchSuccess] = useState(false);
+  const [activeScan, setActiveScan] = useState(false);
+  const [actionMsg, setActionMsg] = useState(null);
 
   const isAdmin = user?.role === "Admin";
   const isAnalystOrAdmin = user?.role === "Admin" || user?.role === "Analyst";
@@ -61,19 +66,27 @@ export const AdminOpsCenter = () => {
 
   const handleTriggerCrawl = async () => {
     if (!isAdmin) {
-      setActionMsg("Error: Triggering crawl runs requires Admin role.");
+      setActionMsg({ type: "error", text: "Error: Triggering crawl runs requires Admin role." });
       return;
     }
     setLoading(true);
-    setActionMsg("");
+    setActiveScan(true);
+    setActionMsg(null);
     try {
       const res = await api.triggerCrawlRun(selectedPortal, selectedType);
-      setActionMsg(`Success: ${res.message}`);
-      setTimeout(() => fetchLogs(), 1500);
+      setDispatchSuccess(true);
+      setActionMsg({
+        type: "success",
+        text: `Success: ${res.message} (Target: ${selectedPortal})`
+      });
+      setTimeout(() => fetchLogs(), 1200);
+      setTimeout(() => setDispatchSuccess(false), 2400);
+      setTimeout(() => setActionMsg(null), 6000);
     } catch (err) {
-      setActionMsg(`Error: ${err.message}`);
+      setActionMsg({ type: "error", text: `Error: ${err.message}` });
     } finally {
       setLoading(false);
+      setTimeout(() => setActiveScan(false), 2500);
     }
   };
 
@@ -102,21 +115,31 @@ export const AdminOpsCenter = () => {
 
       {/* Target Portals Health Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
-        {PORTALS.map((p) => (
-          <div key={p.name} className="card">
-            <div className="card-header" style={{ marginBottom: "0.4rem" }}>
-              <span style={{ fontWeight: "700", color: "#fff", fontSize: "0.9rem" }}>{p.name}</span>
-              <span className="badge badge-bull">Active</span>
+        {PORTALS.map((p) => {
+          const isTargeted = activeScan && (selectedPortal === "all" || selectedPortal === p.name);
+          return (
+            <div
+              key={p.name}
+              className={`card ${isTargeted ? "telemetry-pulse" : ""}`}
+              style={{
+                transition: "all 0.3s ease",
+                borderColor: isTargeted ? "var(--blue-accent)" : "var(--border-color)"
+              }}
+            >
+              <div className="card-header" style={{ marginBottom: "0.4rem" }}>
+                <span style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "0.9rem" }}>{p.name}</span>
+                <span className="badge badge-bull">Active</span>
+              </div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+                {p.type}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border-color)", paddingTop: "0.4rem" }}>
+                <span>Rate Limit: <strong style={{ color: "var(--text-primary)" }}>{p.rateLimit}</strong></span>
+                <span>Robots.txt: <strong style={{ color: "var(--bull-green)" }}>{p.robots}</strong></span>
+              </div>
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-              {p.type}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border-color)", paddingTop: "0.4rem" }}>
-              <span>Rate Limit: <strong style={{ color: "#fff" }}>{p.rateLimit}</strong></span>
-              <span>Robots.txt: <strong style={{ color: "var(--bull-green)" }}>{p.robots}</strong></span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Crawl Control Console (Role-gated: Admin) */}
@@ -136,7 +159,7 @@ export const AdminOpsCenter = () => {
           flexWrap: "wrap",
           background: "var(--bg-input)",
           padding: "1rem",
-          borderRadius: "8px",
+          borderRadius: "10px",
           border: "1px solid var(--border-color)"
         }}>
           <div>
@@ -176,25 +199,59 @@ export const AdminOpsCenter = () => {
           <div style={{ alignSelf: "flex-end" }}>
             <button
               onClick={handleTriggerCrawl}
-              className="btn btn-primary"
+              className={`btn-dispatch-crawl ${loading ? "dispatching" : ""} ${dispatchSuccess ? "dispatched-success" : ""}`}
               disabled={!isAdmin || loading}
+              title={isAdmin ? "Initiate parallel distributed crawl run" : "Requires Admin role"}
             >
-              {loading ? <RefreshCw size={14} className="spin" /> : <Play size={14} />}
-              <span>{loading ? "Queueing Job..." : "Dispatch Crawl Run"}</span>
+              {loading && <span className="dispatch-radar-ping" />}
+
+              <div className="dispatch-btn-content">
+                {loading ? (
+                  <>
+                    <RefreshCw size={15} className="spin-fast" />
+                    <span>Dispatching Crawlers...</span>
+                  </>
+                ) : dispatchSuccess ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Crawl Run Dispatched!</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={15} />
+                    <span>Dispatch Crawl Run</span>
+                  </>
+                )}
+              </div>
             </button>
           </div>
         </div>
 
+        {/* Radar Scanner Beam when crawl is triggered */}
+        {activeScan && (
+          <div className="crawler-radar-scanner">
+            <div className="crawler-scanner-beam" />
+          </div>
+        )}
+
+        {/* Action Status Banner with auto-dismiss */}
         {actionMsg && (
-          <div style={{
-            marginTop: "0.75rem",
-            padding: "0.6rem",
-            borderRadius: "6px",
-            fontSize: "0.8rem",
-            background: actionMsg.startsWith("Error") ? "var(--bear-red-bg)" : "var(--bull-green-bg)",
-            color: actionMsg.startsWith("Error") ? "var(--bear-red)" : "var(--bull-green)",
-          }}>
-            {actionMsg}
+          <div className={`action-msg-banner ${actionMsg.type}`}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+              {actionMsg.type === "error" ? (
+                <AlertTriangle size={16} />
+              ) : (
+                <CheckCircle2 size={16} />
+              )}
+              <span>{actionMsg.text}</span>
+            </div>
+            <button
+              onClick={() => setActionMsg(null)}
+              className="action-msg-close"
+              title="Dismiss notice"
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
       </div>
@@ -235,7 +292,7 @@ export const AdminOpsCenter = () => {
                   const isFailed = log.status === "FAILED";
                   return (
                     <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td style={{ padding: "0.6rem", fontWeight: "600" }}>{log.portal}</td>
+                      <td style={{ padding: "0.6rem", fontWeight: "600", color: "var(--text-primary)" }}>{log.portal}</td>
                       <td style={{ padding: "0.6rem" }}>{log.crawl_type}</td>
                       <td style={{ padding: "0.6rem" }}>
                         <span
@@ -287,7 +344,7 @@ export const AdminOpsCenter = () => {
               <tbody>
                 {userList.map((u) => (
                   <tr key={u.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                    <td style={{ padding: "0.6rem", fontWeight: "600", color: "#fff" }}>{u.full_name}</td>
+                    <td style={{ padding: "0.6rem", fontWeight: "600", color: "var(--text-primary)" }}>{u.full_name}</td>
                     <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{u.email}</td>
                     <td style={{ padding: "0.6rem" }}>
                       <span className={`badge ${u.role === "Admin" ? "badge-ai" : u.role === "Analyst" ? "badge-vwap" : "badge-secondary"}`}>

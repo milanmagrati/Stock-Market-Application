@@ -400,3 +400,328 @@ body {
 }
 
 
+/* ==========================================================================
+   LIVE ALERT TOASTS & SECONDS COUNTDOWN ANIMATIONS
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 390px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.toast-item-card {
+  pointer-events: auto;
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.4), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 0.85rem 1rem 0.95rem;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toast-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(110%) scale(0.95);
+  }
+  70% {
+    transform: translateX(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toastSlideOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    max-height: 140px;
+    margin-bottom: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(120%) scale(0.9);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: -0.65rem;
+  }
+}
+
+.toast-enter {
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-exit {
+  animation: toastSlideOut 0.32s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+.toast-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.toast-timer-pill.paused {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--anomaly-amber);
+  color: var(--anomaly-amber);
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.toast-close-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.toast-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toast-progress-fill {
+  height: 100%;
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+/* ==========================================================================
+   STYLISH ANIMATED DISPATCH CRAWL RUN BUTTON & RADAR EFFECTS
+   ========================================================================== */
+.btn-dispatch-crawl {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #6366f1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.btn-dispatch-crawl:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.btn-dispatch-crawl:active:not(:disabled) {
+  transform: scale(0.97) translateY(0);
+}
+
+.btn-dispatch-crawl:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Light shimmer sweep on hover */
+.btn-dispatch-crawl::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent 0%, rgba(255, 255, 255, 0.25) 50%, transparent 100%);
+  transform: rotate(25deg);
+  transition: none;
+}
+
+.btn-dispatch-crawl:hover:not(:disabled)::after {
+  left: 130%;
+  transition: all 0.8s ease-in-out;
+}
+
+/* Dispatching active state */
+.btn-dispatch-crawl.dispatching {
+  background: linear-gradient(135deg, #1e40af 0%, #4338ca 50%, #6d28d9 100%);
+  background-size: 200% 200%;
+  animation: dispatchGradientShift 1.6s ease infinite;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+  cursor: wait;
+}
+
+@keyframes dispatchGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Radar ping wave around button */
+.dispatch-radar-ping {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  border: 2px solid rgba(99, 102, 241, 0.8);
+  transform: translate(-50%, -50%);
+  animation: radarWave 1.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes radarWave {
+  0% {
+    width: 100%;
+    height: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 160%;
+    height: 180%;
+    opacity: 0;
+  }
+}
+
+/* Dispatched success state */
+.btn-dispatch-crawl.dispatched-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.6);
+  animation: successPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes successPop {
+  0% { transform: scale(0.92); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.dispatch-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+/* Radar scanner beam across dispatcher card */
+.crawler-radar-scanner {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: rgba(59, 130, 246, 0.15);
+  overflow: hidden;
+  border-radius: 2px;
+  margin-top: 0.75rem;
+}
+
+.crawler-scanner-beam {
+  position: absolute;
+  top: 0;
+  left: -30%;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--blue-accent), #8b5cf6, transparent);
+  box-shadow: 0 0 10px var(--blue-accent);
+  animation: scanBeam 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes scanBeam {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* Action banner */
+.action-msg-banner {
+  margin-top: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-msg-banner.success {
+  background: var(--bull-green-bg);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--bull-green);
+}
+
+.action-msg-banner.error {
+  background: var(--bear-red-bg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--bear-red);
+}
+
+.action-msg-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+}
+
+.action-msg-close:hover {
+  opacity: 1;
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
