@@ -54,7 +54,7 @@ const PORTALS = [
 ];
 
 export const AdminOpsCenter = () => {
-  const { user } = useAuth();
+  const { user, switchRole } = useAuth();
   const [subTab, setSubTab] = useState("crawlers"); // "crawlers", "watchlist", "users", "corrections"
   
   // Crawler & Scheduler State
@@ -612,7 +612,7 @@ export const AdminOpsCenter = () => {
                 <div>Interval: <strong style={{ color: "var(--text-primary)" }}>{schedulerStatus?.interval_minutes || 30}m</strong></div>
                 <div>Completed Runs: <strong style={{ color: "var(--bull-green)" }}>{schedulerStatus?.total_scheduled_runs || 0}</strong></div>
               </div>
-              {isAdmin && (
+              {isAdmin ? (
                 <div style={{ marginTop: "0.75rem" }}>
                   <button
                     onClick={handleToggleScheduler}
@@ -622,6 +622,11 @@ export const AdminOpsCenter = () => {
                     {schedulerStatus?.is_active ? <ToggleRight size={14} color="var(--bull-green)" /> : <ToggleLeft size={14} />}
                     <span>{schedulerStatus?.is_active ? "Pause Auto-Scheduler" : "Activate Auto-Scheduler"}</span>
                   </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.72rem", color: "var(--text-muted)", background: "rgba(245, 158, 11, 0.08)", padding: "0.3rem 0.65rem", borderRadius: "6px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+                  <Lock size={12} color="var(--anomaly-amber)" />
+                  <span>Scheduler toggle restricted to Admin role</span>
                 </div>
               )}
             </div>
@@ -647,25 +652,155 @@ export const AdminOpsCenter = () => {
           </div>
 
           {/* Crawler Dispatcher Trigger Console */}
-          <div className="card">
+          <div
+            className="card"
+            style={{
+              border: isAdmin ? "1px solid var(--border-color)" : "1px solid rgba(245, 158, 11, 0.35)",
+              background: isAdmin
+                ? "var(--bg-card)"
+                : "linear-gradient(180deg, rgba(245, 158, 11, 0.04) 0%, var(--bg-card) 100%)",
+              boxShadow: isAdmin ? "var(--shadow-card)" : "0 4px 20px -2px rgba(245, 158, 11, 0.09)",
+              position: "relative",
+              overflow: "hidden",
+              transition: "all 0.25s ease"
+            }}
+          >
             <div className="card-header">
               <div className="card-title">
-                <Bot size={18} color="var(--blue-accent)" />
+                <Bot size={18} color={isAdmin ? "var(--blue-accent)" : "var(--anomaly-amber)"} />
                 <span>Distributed Ingestion Queue Dispatcher</span>
               </div>
-              <span className="badge badge-ai">Async Queue (Redis / In-Memory Worker)</span>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                {isAdmin ? (
+                  <span className="badge badge-bull" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                    <ShieldCheck size={12} />
+                    <span>Admin Clearance Active</span>
+                  </span>
+                ) : (
+                  <span className="badge badge-anomaly" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.25rem 0.65rem", fontWeight: "600" }}>
+                    <Lock size={12} />
+                    <span>RBAC Level 3 • Admin Access Only</span>
+                  </span>
+                )}
+                <span className="badge badge-ai">Async Queue (Redis / In-Memory Worker)</span>
+              </div>
             </div>
 
+            {/* Non-Admin Security Enclave Notice with 1-Click Role Switch */}
+            {!isAdmin && (
+              <div style={{
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: "10px",
+                padding: "0.85rem 1rem",
+                marginBottom: "1rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "1rem",
+                flexWrap: "wrap"
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", flex: 1, minWidth: "260px" }}>
+                  <div style={{
+                    background: "rgba(245, 158, 11, 0.15)",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    borderRadius: "8px",
+                    padding: "0.5rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "var(--anomaly-amber)"
+                  }}>
+                    <Lock size={18} />
+                  </div>
+                  <div style={{ fontSize: "0.8rem", lineHeight: "1.45" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "600", color: "var(--anomaly-amber)" }}>
+                      <span>Protected Ingestion Dispatch Enclave</span>
+                      <span style={{
+                        fontSize: "0.68rem",
+                        background: "rgba(245, 158, 11, 0.2)",
+                        color: "var(--anomaly-amber)",
+                        padding: "0.1rem 0.45rem",
+                        borderRadius: "4px",
+                        fontWeight: "700",
+                        letterSpacing: "0.03em"
+                      }}>
+                        ROLE: {user?.role ? user.role.toUpperCase() : "VIEWER"}
+                      </span>
+                    </div>
+                    <div style={{ color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                      Manual spider dispatch triggers concurrent headless scrapers across external portals with strict token-bucket rate limits (2.0s). In accordance with platform governance, dispatch controls are locked for <strong>{user?.role || "Viewer"}</strong> sessions.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recruiter Evaluation Fast-Switch Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await switchRole("Admin");
+                      setActionMsg({
+                        type: "success",
+                        title: "Role Elevated to Admin",
+                        text: "Switched session to Admin mode. Distributed Ingestion Queue Dispatcher unlocked."
+                      });
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                  className="btn btn-sm"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(59, 130, 246, 0.25))",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
+                    color: "var(--text-primary)",
+                    fontWeight: "600",
+                    padding: "0.5rem 0.9rem",
+                    fontSize: "0.78rem",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.45rem",
+                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.15)",
+                    cursor: "pointer",
+                    borderRadius: "7px"
+                  }}
+                  title="Switch to Admin role to evaluate real-time crawler pipeline dispatch"
+                >
+                  <ShieldCheck size={14} color="var(--bull-green)" />
+                  <span>Switch to Admin (Demo 1-Click)</span>
+                </button>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: "180px" }}>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
-                  TARGET PORTAL
+              {/* Target Portal Selector */}
+              <div style={{ flex: 1, minWidth: "180px", opacity: isAdmin ? 1 : 0.85 }}>
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  fontSize: "0.75rem",
+                  color: isAdmin ? "var(--text-muted)" : "var(--anomaly-amber)",
+                  marginBottom: "0.35rem",
+                  fontWeight: "600"
+                }}>
+                  {!isAdmin && <Lock size={11} />}
+                  <span>TARGET PORTAL</span>
+                  {!isAdmin && <span style={{ fontSize: "0.68rem", opacity: 0.85 }}>(LOCKED)</span>}
                 </label>
                 <select
                   value={selectedPortal}
                   onChange={(e) => setSelectedPortal(e.target.value)}
                   className="select"
                   disabled={!isAdmin}
+                  style={{
+                    width: "100%",
+                    cursor: isAdmin ? "pointer" : "not-allowed",
+                    background: isAdmin ? "var(--bg-input)" : "rgba(13, 19, 34, 0.65)",
+                    borderColor: isAdmin ? "var(--border-color)" : "rgba(245, 158, 11, 0.35)"
+                  }}
+                  title={!isAdmin ? "Requires Admin privilege to modify target crawler portals" : undefined}
                 >
                   <option value="all">All Portals (Concurrent Distributed Queue)</option>
                   {PORTALS.map((p) => (
@@ -674,15 +809,33 @@ export const AdminOpsCenter = () => {
                 </select>
               </div>
 
-              <div style={{ flex: 1, minWidth: "160px" }}>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
-                  INGESTION STREAM
+              {/* Ingestion Stream Selector */}
+              <div style={{ flex: 1, minWidth: "160px", opacity: isAdmin ? 1 : 0.85 }}>
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  fontSize: "0.75rem",
+                  color: isAdmin ? "var(--text-muted)" : "var(--anomaly-amber)",
+                  marginBottom: "0.35rem",
+                  fontWeight: "600"
+                }}>
+                  {!isAdmin && <Lock size={11} />}
+                  <span>INGESTION STREAM</span>
+                  {!isAdmin && <span style={{ fontSize: "0.68rem", opacity: 0.85 }}>(LOCKED)</span>}
                 </label>
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="select"
                   disabled={!isAdmin}
+                  style={{
+                    width: "100%",
+                    cursor: isAdmin ? "pointer" : "not-allowed",
+                    background: isAdmin ? "var(--bg-input)" : "rgba(13, 19, 34, 0.65)",
+                    borderColor: isAdmin ? "var(--border-color)" : "rgba(245, 158, 11, 0.35)"
+                  }}
+                  title={!isAdmin ? "Requires Admin privilege to modify ingestion stream" : undefined}
                 >
                   <option value="NEWS">Financial News Articles</option>
                   <option value="OHLCV">Daily OHLCV Telemetry</option>
@@ -690,24 +843,63 @@ export const AdminOpsCenter = () => {
                 </select>
               </div>
 
-              <button
-                onClick={handleTriggerCrawl}
-                disabled={!isAdmin || loading}
-                className="btn btn-primary"
-                style={{ padding: "0.55rem 1.25rem", height: "38px" }}
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw size={15} className="spin-fast" />
-                    <span>Enqueuing Job...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={15} />
-                    <span>Trigger Distributed Crawl Run</span>
-                  </>
-                )}
-              </button>
+              {/* Action Button: Admin Active vs Non-Admin Locked */}
+              {isAdmin ? (
+                <button
+                  onClick={handleTriggerCrawl}
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{
+                    padding: "0.55rem 1.25rem",
+                    height: "38px",
+                    boxShadow: "0 0 14px rgba(59, 130, 246, 0.35)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem"
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={15} className="spin-fast" />
+                      <span>Enqueuing Job...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={15} />
+                      <span>Trigger Distributed Crawl Run</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionMsg({
+                      type: "error",
+                      title: "RBAC Security Enforcement",
+                      text: `Current session (${user?.role || "Viewer"}) cannot dispatch crawler tasks. Elevate to Admin using the button above or the navbar role switcher.`
+                    });
+                  }}
+                  className="btn"
+                  style={{
+                    padding: "0.55rem 1.25rem",
+                    height: "38px",
+                    background: "rgba(245, 158, 11, 0.12)",
+                    border: "1px dashed rgba(245, 158, 11, 0.5)",
+                    color: "var(--anomaly-amber)",
+                    fontWeight: "600",
+                    cursor: "not-allowed",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    transition: "all 0.2s ease"
+                  }}
+                  title="Operation Locked: Requires System Administrator role (RBAC Level 3)"
+                >
+                  <Lock size={15} />
+                  <span>Locked (Admin Clearance Required)</span>
+                </button>
+              )}
             </div>
           </div>
 
