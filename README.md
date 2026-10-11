@@ -69,9 +69,9 @@ The platform enforces strict server-side Role-Based Access Control (**Admin**, *
 
 | Role | Email | Password | Permissions |
 |---|---|---|---|
-| **Admin** | `admin@omway.com` | `admin123` | Manage watchlist, trigger/monitor crawl runs, inspect error logs, manage users |
-| **Analyst** | `analyst@omway.com` | `analyst123` | View all data, correct news categorization (audit logged), export reports |
-| **Viewer** | `viewer@omway.com` | `viewer123` | Read-only access to interactive charts, behavior summaries, and news feeds |
+| **Admin** | `admin@omway.com` | `admin123` | Full access: Manage watchlist & config sync, trigger/monitor crawl runs, manage user accounts & roles, control background crawler scheduler, export retraining datasets |
+| **Analyst** | `analyst@omway.com` | `analyst123` | Analytical access: View all data, correct news categorization (audit logged), export comprehensive analytical reports in CSV or JSON format |
+| **Viewer** | `viewer@omway.com` | `viewer123` | Read-only access: View interactive charts, behavioral metrics, and news feeds. Strict 403 Forbidden on exports, edits, and admin functions |
 
 ---
 
@@ -84,12 +84,13 @@ The platform enforces strict server-side Role-Based Access Control (**Admin**, *
 4. `bizmandu.com` — Economic policy, monetary announcements, corporate leadership.
 
 ### Crawling Architecture
-- **Queue & Scheduler**: Asynchronous queue worker with configurable scheduler intervals.
+- **Unattended Background Scheduler**: Periodic asynchronous runner in `backend/app/crawler/scheduler.py` executing unattended crawl passes at configurable intervals (e.g., every 30 minutes). Toggleable and configurable in real-time from the Admin Operations Center.
+- **Queue & Worker**: Thread-safe async queue decoupling request triggers from crawl execution.
 - **Rate Limiting**: Per-domain token bucket enforcing a 2.0-second delay between requests to protect portal health.
 - **Robots.txt**: Validates crawler permissions via `urllib.robotparser` before fetching.
-- **URL Deduplication**: Pre-insertion checks ensure zero duplicates.
+- **URL Deduplication**: Pre-insertion checks ensure zero duplicate news items.
 - **Failure Resilience**: Errors (network timeouts, CAPTCHAs, bot blocks) are caught, stored in `crawl_logs`, and surfaced in the Admin view.
-- **Pre-seeded Dataset**: Includes 30 days of OHLCV, 790 floorsheet transactions, and historical articles for guaranteed zero-downtime evaluation.
+- **Pre-seeded Dataset**: Includes 30 days of OHLCV, 790+ floorsheet transactions, and historical articles for guaranteed zero-downtime evaluation.
 
 ---
 
@@ -103,7 +104,8 @@ The platform enforces strict server-side Role-Based Access Control (**Admin**, *
    - Generates normalized multi-label confidence scores $P(\text{Company}_i | \text{Article}) \in [0.50, 0.98]$.
 3. **Analyst Correction & Model Retraining Loop**:
    - An Analyst or Admin can re-tag articles, modify confidence scores, or add missing tickers via `POST /api/news/:id/recategorize`.
-   - Every modification is written to `categorization_corrections` with analyst credentials, timestamp, and notes for offline fine-tuning.
+   - Every modification is written to `categorization_corrections` with analyst credentials, timestamp, and notes.
+   - Retraining datasets can be audited and exported directly in CSV or JSON via `GET /api/news/corrections/export` or the Admin Ops Center UI for offline supervised fine-tuning.
 
 ### Technical Justification & Trade-offs
 - **High Precision on Ticker Entities**: In financial markets, symbol collisions and company names require strict word-boundary matching.
@@ -132,7 +134,15 @@ Full details are documented in [FINDINGS_SUMMARY.md](file:///c:/Users/milan/OneD
 
 ## 6. Architecture & Non-Functional Requirements
 
-- **Watchlist Config-Driven**: Add or remove companies simply by editing [companies.json](file:///c:/Users/milan/OneDrive/Desktop/Omway%20Technology%20Project/config/companies.json) — no code modifications required.
+- **Watchlist Config-Driven & Zero-Babysitting**:
+  - Add or remove companies simply by editing [companies.json](file:///c:/Users/milan/OneDrive/Desktop/Omway%20Technology%20Project/config/companies.json) or using the Admin Watchlist Manager UI / API (`POST /api/companies`).
+  - **Zero Babysitting Automation**: Newly added companies are automatically provisioned with 30 days of baseline OHLCV price history and realistic floorsheet transactions via `seed_single_company_telemetry` and `sync_companies_from_config` without requiring manual database intervention.
+- **Server-Side RBAC Enforcement**:
+  - All role boundaries (Admin, Analyst, Viewer) are enforced server-side using FastAPI dependencies (`require_role`).
+  - Report exports and recategorization reject Viewers with HTTP `403 Forbidden`.
+  - Watchlist modifications, crawler triggers, and user management reject non-Admins with HTTP `403 Forbidden`.
+- **Comprehensive Report Exports**:
+  - Analysts and Admins can export institutional-grade quantitative summaries (prices, technical indicators, broker concentration, volume anomalies, and news sentiment) in CSV or JSON via `GET /api/reports/export` or the modal UI.
 - **No Hard-coded Secrets**: All keys, database URIs, and rate limits load through environment variables (`.env`).
 - **Real-time WebSockets**: `/ws/updates` pushes live price updates, crawl completions, and volume anomaly alerts to connected dashboards.
 - **Interactive OpenAPI Documentation**: Available at `http://localhost:8000/docs` and `http://localhost:8000/redoc`.
@@ -145,7 +155,9 @@ Full details are documented in [FINDINGS_SUMMARY.md](file:///c:/Users/milan/OneD
    - Pure-Python probabilistic momentum classifier predicting $P(\text{UP})$ vs $P(\text{DOWN})$ using 3D/5D returns, volume ratios, and news sentiment.
 2. **Real-Time Volume Anomaly Alerting**:
    - Instant WebSocket notification popups with audio/visual banners when volume spikes exceed $Z > 2.0$.
-3. **CI Pipeline**:
+3. **Unattended Scheduler & Crawler Operations**:
+   - Automated periodic execution with dynamic interval adjustment and live health monitoring.
+4. **CI Pipeline**:
    - GitHub Actions workflow (`.github/workflows/ci.yml`) running Flake8 linting, full integration tests, and Vite build validation.
 
 ---
@@ -159,10 +171,10 @@ Omway Technology Project/
 │   │   ├── main.py              # FastAPI app & static file mounting
 │   │   ├── config.py            # Environment configuration
 │   │   ├── database.py          # SQLAlchemy async session & engine
-│   │   ├── models/              # Company, OHLCV, Floorsheet, News, User, CrawlLog
-│   │   ├── schemas/             # Pydantic validation & serialization schemas
-│   │   ├── api/                 # Auth, Companies, News, Behavior, Admin, WebSocket
-│   │   ├── crawler/             # Scrapers, rate limiter, robots.txt, async queue
+│   │   ├── models/              # Company, OHLCV, Floorsheet, News, User, CrawlLog, Correction
+│   │   ├── schemas/             # Pydantic v2 validation & serialization schemas
+│   │   ├── api/                 # Auth, Companies, News, Behavior, Admin, Reports, WebSocket
+│   │   ├── crawler/             # Scrapers, rate limiter, robots.txt, async queue, scheduler
 │   │   ├── analytics/           # VWAP, Pressure, Anomalies, Floorsheets, Event study
 │   │   └── ml/                  # Categorizer, Bonus price-direction classifier, Seeder
 │   ├── tests/
@@ -173,9 +185,9 @@ Omway Technology Project/
 │   └── Dockerfile               # Backend container configuration
 ├── frontend/
 │   ├── src/
-│   │   ├── components/          # Candlestick chart, floorsheet, news, matrix, admin
+│   │   ├── components/          # Candlestick chart, floorsheet, news, matrix, admin, report export
 │   │   ├── context/             # AuthContext with 1-click RBAC switching
-│   │   ├── services/            # API client with token injection
+│   │   ├── services/            # API client with token injection & error handling
 │   │   ├── App.jsx              # Main reactive application layout
 │   │   └── index.css            # Dark mode Bloomberg/TradingView design tokens
 │   ├── package.json
