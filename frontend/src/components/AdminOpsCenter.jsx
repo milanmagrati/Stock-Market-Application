@@ -22,6 +22,7 @@ import {
   ArrowDown,
   Filter,
   Eye,
+  EyeOff,
   Copy,
   Check,
   Plus,
@@ -33,7 +34,15 @@ import {
   Tag,
   ToggleLeft,
   ToggleRight,
-  Database
+  Database,
+  UserPlus,
+  Shield,
+  ShieldCheck,
+  Mail,
+  User,
+  ChevronDown,
+  Building2,
+  Sparkles
 } from "lucide-react";
 import { Pagination } from "./Pagination";
 
@@ -57,16 +66,27 @@ export const AdminOpsCenter = () => {
   const [actionMsg, setActionMsg] = useState(null);
   const [schedulerStatus, setSchedulerStatus] = useState(null);
 
-  // Watchlist State
+  // Watchlist State & Pagination
   const [companies, setCompanies] = useState([]);
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
   const [newCompany, setNewCompany] = useState({ symbol: "", name: "", sector: "Commercial Banks", aliases: "" });
   const [isSyncingConfig, setIsSyncingConfig] = useState(false);
+  const [watchPage, setWatchPage] = useState(1);
+  const [watchPageSize, setWatchPageSize] = useState(10);
+  const [watchSearch, setWatchSearch] = useState("");
+  const [watchSector, setWatchSector] = useState("ALL");
+  const [watchStatus, setWatchStatus] = useState("ALL");
+  const [watchSortField, setWatchSortField] = useState("symbol");
+  const [watchSortDir, setWatchSortDir] = useState("asc");
 
-  // User Governance State
+  // User Governance State & Pagination
   const [userList, setUserList] = useState([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "Analyst" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
 
   // News Corrections State
   const [corrections, setCorrections] = useState([]);
@@ -366,84 +386,174 @@ export const AdminOpsCenter = () => {
     return filteredCorrections.slice(start, start + corrPageSize);
   }, [filteredCorrections, corrPage, corrPageSize]);
 
+  // Watchlist: Dynamic Sectors Extraction
+  const availableSectors = useMemo(() => {
+    const set = new Set(companies.map(c => c.sector).filter(Boolean));
+    return Array.from(set).sort();
+  }, [companies]);
+
+  // Watchlist: Filter companies
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((c) => {
+      if (watchSector !== "ALL" && c.sector !== watchSector) return false;
+      if (watchStatus === "ACTIVE" && !c.is_active) return false;
+      if (watchStatus === "INACTIVE" && c.is_active) return false;
+      if (watchSearch.trim()) {
+        const q = watchSearch.toLowerCase().trim();
+        const inSym = c.symbol?.toLowerCase().includes(q);
+        const inName = c.name?.toLowerCase().includes(q);
+        const inSec = c.sector?.toLowerCase().includes(q);
+        const inAliases = c.aliases?.toLowerCase().includes(q);
+        if (!inSym && !inName && !inSec && !inAliases) return false;
+      }
+      return true;
+    });
+  }, [companies, watchSector, watchStatus, watchSearch]);
+
+  // Watchlist: Sort companies
+  const sortedCompanies = useMemo(() => {
+    return [...filteredCompanies].sort((a, b) => {
+      let aVal = a[watchSortField];
+      let bVal = b[watchSortField];
+      if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal || "").toLowerCase();
+      }
+      if (watchSortField === "is_active") {
+        aVal = a.is_active ? 1 : 0;
+        bVal = b.is_active ? 1 : 0;
+      }
+      if (aVal < bVal) return watchSortDir === "asc" ? -1 : 1;
+      if (aVal > bVal) return watchSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredCompanies, watchSortField, watchSortDir]);
+
+  // Watchlist: Sliced Page
+  const pagedCompanies = useMemo(() => {
+    const start = (watchPage - 1) * watchPageSize;
+    return sortedCompanies.slice(start, start + watchPageSize);
+  }, [sortedCompanies, watchPage, watchPageSize]);
+
+  const handleWatchSort = (field) => {
+    if (watchSortField === field) {
+      setWatchSortDir(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setWatchSortField(field);
+      setWatchSortDir("asc");
+    }
+  };
+
+  // User Governance: Filter users
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return userList;
+    const q = userSearch.toLowerCase().trim();
+    return userList.filter((u) => 
+      u.full_name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.role?.toLowerCase().includes(q)
+    );
+  }, [userList, userSearch]);
+
+  const pagedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return filteredUsers.slice(start, start + userPageSize);
+  }, [filteredUsers, userPage, userPageSize]);
+
+  // Modal ESC Key listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showAddUserModal) setShowAddUserModal(false);
+        if (showAddCompanyModal) setShowAddCompanyModal(false);
+        if (selectedError) setSelectedError(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAddUserModal, showAddCompanyModal, selectedError]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* Header and Operational Sub-tabs */}
-      <div style={{
-        background: "var(--bg-secondary)",
-        borderRadius: "12px",
-        padding: "1rem 1.25rem",
-        border: "1px solid var(--border-color)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "1rem"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div style={{
-            background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
-            width: "36px",
-            height: "36px",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff"
-          }}>
-            <Bot size={20} />
+      <div className="ops-governance-header">
+        <div className="ops-header-brand">
+          <div className="ops-brand-icon">
+            <Bot size={22} />
           </div>
           <div>
-            <div style={{ fontWeight: "700", fontSize: "1.05rem" }}>
-              Operations &amp; Governance Center
+            <div className="ops-header-title">
+              <span>Operations &amp; Governance Center</span>
+              <div className="ops-live-badge">
+                <span className="ops-pulse-dot" />
+                <span>Engine Active</span>
+              </div>
             </div>
-            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-              Data Pipeline Automation, Watchlist Config, Role RBAC &amp; AI Retraining
+            <div className="ops-header-subtitle">
+              <span>Data Pipeline Automation</span>
+              <span className="dot-separator">•</span>
+              <span>Watchlist Telemetry</span>
+              <span className="dot-separator">•</span>
+              <span>RBAC User Control</span>
+              <span className="dot-separator">•</span>
+              <span>AI Fine-Tuning Corpus</span>
             </div>
           </div>
         </div>
 
-        {/* Sub-tab Pills */}
-        <div style={{ display: "flex", gap: "0.4rem", background: "var(--bg-input)", padding: "0.25rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
+        {/* Sub-tab Segmented Control Pills */}
+        <div className="ops-nav-tabs" role="tablist" aria-label="Governance sub-tabs">
           <button
+            role="tab"
+            aria-selected={subTab === "crawlers"}
             onClick={() => setSubTab("crawlers")}
-            className={`btn btn-sm ${subTab === "crawlers" ? "btn-primary" : "btn-secondary"}`}
-            style={{ fontSize: "0.76rem" }}
+            className={`ops-tab-btn ${subTab === "crawlers" ? "active" : ""}`}
           >
-            <Server size={13} />
+            <Server size={14} />
             <span>Crawlers &amp; Scheduler</span>
+            {schedulerStatus?.is_active && (
+              <span className="tab-badge" style={{ background: "rgba(16, 185, 129, 0.25)", color: "var(--bull-green)" }}>
+                LIVE
+              </span>
+            )}
           </button>
           
           {isAdmin && (
             <button
+              role="tab"
+              aria-selected={subTab === "watchlist"}
               onClick={() => setSubTab("watchlist")}
-              className={`btn btn-sm ${subTab === "watchlist" ? "btn-primary" : "btn-secondary"}`}
-              style={{ fontSize: "0.76rem" }}
+              className={`ops-tab-btn ${subTab === "watchlist" ? "active" : ""}`}
             >
-              <Database size={13} />
+              <Database size={14} />
               <span>Watchlist Mgmt</span>
+              <span className="tab-badge">{companies.length}</span>
             </button>
           )}
 
           {isAdmin && (
             <button
+              role="tab"
+              aria-selected={subTab === "users"}
               onClick={() => setSubTab("users")}
-              className={`btn btn-sm ${subTab === "users" ? "btn-primary" : "btn-secondary"}`}
-              style={{ fontSize: "0.76rem" }}
+              className={`ops-tab-btn ${subTab === "users" ? "active" : ""}`}
             >
-              <Users size={13} />
+              <Users size={14} />
               <span>RBAC User Governance</span>
+              <span className="tab-badge">{userList.length}</span>
             </button>
           )}
 
           {isAnalystOrAdmin && (
             <button
+              role="tab"
+              aria-selected={subTab === "corrections"}
               onClick={() => setSubTab("corrections")}
-              className={`btn btn-sm ${subTab === "corrections" ? "btn-primary" : "btn-secondary"}`}
-              style={{ fontSize: "0.76rem" }}
+              className={`ops-tab-btn ${subTab === "corrections" ? "active" : ""}`}
             >
-              <Tag size={13} />
-              <span>News Audit &amp; Retraining ({corrections.length})</span>
+              <Tag size={14} />
+              <span>News Audit &amp; Retraining</span>
+              <span className="tab-badge">{corrections.length}</span>
             </button>
           )}
         </div>
@@ -721,11 +831,14 @@ export const AdminOpsCenter = () => {
       {/* ============================================================== */}
       {subTab === "watchlist" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div className="card">
-            <div className="card-header">
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="card-header" style={{ padding: "1rem 1.25rem", margin: 0, borderBottom: "1px solid var(--border-color)" }}>
               <div className="card-title">
                 <Database size={18} color="var(--blue-accent)" />
                 <span>Tracked NEPSE Companies Watchlist</span>
+                <span className="badge badge-bull" style={{ fontSize: "0.72rem" }}>
+                  {filteredCompanies.length} of {companies.length} Tracked
+                </span>
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
@@ -747,59 +860,234 @@ export const AdminOpsCenter = () => {
               </div>
             </div>
 
+            {/* Smart Search & Filter Toolbar */}
+            <div className="watchlist-toolbar">
+              <div className="watchlist-toolbar-left">
+                {/* Search Bar */}
+                <div className="watchlist-search-box">
+                  <Search size={14} style={{ position: "absolute", left: "0.75rem", color: "var(--text-muted)" }} />
+                  <input
+                    type="text"
+                    placeholder="Search by symbol, company name, sector, or keyword..."
+                    value={watchSearch}
+                    onChange={(e) => {
+                      setWatchSearch(e.target.value);
+                      setWatchPage(1);
+                    }}
+                  />
+                  {watchSearch && (
+                    <button
+                      type="button"
+                      onClick={() => { setWatchSearch(""); setWatchPage(1); }}
+                      className="watchlist-clear-btn"
+                      title="Clear search"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sector Filter */}
+                <select
+                  value={watchSector}
+                  onChange={(e) => {
+                    setWatchSector(e.target.value);
+                    setWatchPage(1);
+                  }}
+                  className="select"
+                  style={{ fontSize: "0.78rem", padding: "0.38rem 0.75rem", minWidth: "150px" }}
+                >
+                  <option value="ALL">All Sectors ({companies.length})</option>
+                  {availableSectors.map(sec => (
+                    <option key={sec} value={sec}>{sec}</option>
+                  ))}
+                </select>
+
+                {/* Status Filter Pills */}
+                <div style={{ display: "flex", gap: "0.3rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => { setWatchStatus("ALL"); setWatchPage(1); }}
+                    className={`status-pill-btn ${watchStatus === "ALL" ? "active" : ""}`}
+                  >
+                    All ({companies.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setWatchStatus("ACTIVE"); setWatchPage(1); }}
+                    className={`status-pill-btn success ${watchStatus === "ACTIVE" ? "active" : ""}`}
+                  >
+                    Active ({companies.filter(c => c.is_active).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setWatchStatus("INACTIVE"); setWatchPage(1); }}
+                    className={`status-pill-btn failed ${watchStatus === "INACTIVE" ? "active" : ""}`}
+                  >
+                    Inactive ({companies.filter(c => !c.is_active).length})
+                  </button>
+                </div>
+              </div>
+
+              {(watchSearch || watchSector !== "ALL" || watchStatus !== "ALL") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWatchSearch("");
+                    setWatchSector("ALL");
+                    setWatchStatus("ALL");
+                    setWatchPage(1);
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "0.72rem", padding: "0.25rem 0.55rem" }}
+                >
+                  <X size={12} />
+                  <span>Reset Filters</span>
+                </button>
+              )}
+            </div>
+
+            {/* Table */}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "0.6rem" }}>Symbol</th>
-                    <th style={{ padding: "0.6rem" }}>Company Name</th>
-                    <th style={{ padding: "0.6rem" }}>Sector</th>
-                    <th style={{ padding: "0.6rem" }}>Aliases / Keywords</th>
-                    <th style={{ padding: "0.6rem" }}>Status</th>
-                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Actions</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)", background: "var(--bg-input)" }}>
+                    <th onClick={() => handleWatchSort("symbol")} className="th-sortable" style={{ padding: "0.7rem 0.85rem" }}>
+                      Symbol
+                      <span className="sort-icon-box">
+                        {watchSortField === "symbol" ? (watchSortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} opacity={0.4} />}
+                      </span>
+                    </th>
+                    <th onClick={() => handleWatchSort("name")} className="th-sortable" style={{ padding: "0.7rem 0.85rem" }}>
+                      Company Name
+                      <span className="sort-icon-box">
+                        {watchSortField === "name" ? (watchSortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} opacity={0.4} />}
+                      </span>
+                    </th>
+                    <th onClick={() => handleWatchSort("sector")} className="th-sortable" style={{ padding: "0.7rem 0.85rem" }}>
+                      Sector
+                      <span className="sort-icon-box">
+                        {watchSortField === "sector" ? (watchSortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} opacity={0.4} />}
+                      </span>
+                    </th>
+                    <th style={{ padding: "0.7rem 0.85rem" }}>Aliases / Keywords</th>
+                    <th onClick={() => handleWatchSort("is_active")} className="th-sortable" style={{ padding: "0.7rem 0.85rem" }}>
+                      Status
+                      <span className="sort-icon-box">
+                        {watchSortField === "is_active" ? (watchSortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} opacity={0.4} />}
+                      </span>
+                    </th>
+                    <th style={{ padding: "0.7rem 0.85rem", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {companies.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td className="font-mono" style={{ padding: "0.6rem", fontWeight: "700", color: "var(--text-primary)" }}>
-                        {c.symbol}
-                      </td>
-                      <td style={{ padding: "0.6rem", fontWeight: "500" }}>{c.name}</td>
-                      <td style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{c.sector}</td>
-                      <td style={{ padding: "0.6rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                        {c.aliases || "—"}
-                      </td>
-                      <td style={{ padding: "0.6rem" }}>
-                        <span className={`badge ${c.is_active ? "badge-bull" : "badge-secondary"}`}>
-                          {c.is_active ? "ACTIVE" : "INACTIVE"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.6rem", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                  {pagedCompanies.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ padding: "2.5rem 1rem", textAlign: "center", color: "var(--text-muted)" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                          <Database size={28} opacity={0.3} />
+                          <div>No tracked companies match your filter criteria.</div>
                           <button
-                            onClick={() => handleToggleCompanyActive(c.id, c.is_active)}
+                            type="button"
+                            onClick={() => { setWatchSearch(""); setWatchSector("ALL"); setWatchStatus("ALL"); }}
                             className="btn btn-secondary btn-sm"
-                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}
-                            title="Toggle active status"
+                            style={{ marginTop: "0.5rem" }}
                           >
-                            {c.is_active ? "Deactivate" : "Activate"}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCompany(c.id, c.symbol)}
-                            className="btn btn-secondary btn-sm"
-                            style={{ padding: "0.2rem 0.4rem", color: "var(--bear-red)" }}
-                            title="Remove company"
-                          >
-                            <Trash2 size={13} />
+                            Clear Filters
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    pagedCompanies.map((c) => (
+                      <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background 0.15s ease" }}>
+                        <td className="font-mono" style={{ padding: "0.7rem 0.85rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                          <span style={{
+                            display: "inline-block",
+                            padding: "0.2rem 0.45rem",
+                            borderRadius: "5px",
+                            background: "rgba(59, 130, 246, 0.12)",
+                            color: "var(--blue-accent)",
+                            border: "1px solid rgba(59, 130, 246, 0.25)"
+                          }}>
+                            {c.symbol}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem", fontWeight: "500" }}>{c.name}</td>
+                        <td style={{ padding: "0.7rem 0.85rem" }}>
+                          <span style={{
+                            display: "inline-block",
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: "9999px",
+                            fontSize: "0.72rem",
+                            background: "var(--bg-input)",
+                            border: "1px solid var(--border-color)",
+                            color: "var(--text-secondary)"
+                          }}>
+                            {c.sector}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem" }}>
+                          {c.aliases ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", maxWidth: "260px" }}>
+                              {c.aliases.split(",").map((alias, aIdx) => (
+                                <span key={aIdx} className="watchlist-chip">
+                                  {alias.trim()}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem" }}>
+                          <span className={`badge ${c.is_active ? "badge-bull" : "badge-secondary"}`}>
+                            {c.is_active ? "ACTIVE" : "INACTIVE"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem", textAlign: "right" }}>
+                          <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCompanyActive(c.id, c.is_active)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem" }}
+                              title="Toggle active status"
+                            >
+                              {c.is_active ? "Deactivate" : "Activate"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCompany(c.id, c.symbol)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: "0.25rem 0.45rem", color: "var(--bear-red)" }}
+                              title="Remove company"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Smart Functional Pagination Component */}
+            <Pagination
+              currentPage={watchPage}
+              totalItems={filteredCompanies.length}
+              pageSize={watchPageSize}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onPageChange={(p) => setWatchPage(p)}
+              onPageSizeChange={(s) => {
+                setWatchPageSize(s);
+                setWatchPage(1);
+              }}
+              itemLabel="companies"
+              showJump={true}
+            />
           </div>
         </div>
       )}
@@ -809,13 +1097,17 @@ export const AdminOpsCenter = () => {
       {/* ============================================================== */}
       {subTab === "users" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div className="card">
-            <div className="card-header">
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="card-header" style={{ padding: "1rem 1.25rem", margin: 0, borderBottom: "1px solid var(--border-color)" }}>
               <div className="card-title">
                 <Users size={18} color="var(--ai-purple)" />
                 <span>RBAC User Accounts &amp; Permissions</span>
+                <span className="badge badge-ai" style={{ fontSize: "0.72rem" }}>
+                  {filteredUsers.length} Users
+                </span>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddUserModal(true)}
                 className="btn btn-primary btn-sm"
               >
@@ -824,55 +1116,104 @@ export const AdminOpsCenter = () => {
               </button>
             </div>
 
+            {/* User Search Bar */}
+            <div style={{ padding: "0.75rem 1rem", background: "var(--bg-input)", borderBottom: "1px solid var(--border-color)" }}>
+              <div style={{ position: "relative", maxWidth: "320px", display: "flex", alignItems: "center" }}>
+                <Search size={14} style={{ position: "absolute", left: "0.75rem", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Search users by name, email, or role..."
+                  value={userSearch}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    setUserPage(1);
+                  }}
+                  className="input"
+                  style={{ width: "100%", paddingLeft: "2.2rem", fontSize: "0.8rem" }}
+                />
+                {userSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserSearch(""); setUserPage(1); }}
+                    className="watchlist-clear-btn"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "0.6rem" }}>Full Name</th>
-                    <th style={{ padding: "0.6rem" }}>Email</th>
-                    <th style={{ padding: "0.6rem" }}>Assigned Role</th>
-                    <th style={{ padding: "0.6rem" }}>Role Change</th>
-                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Actions</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)", background: "var(--bg-input)" }}>
+                    <th style={{ padding: "0.7rem 0.85rem" }}>Full Name</th>
+                    <th style={{ padding: "0.7rem 0.85rem" }}>Email</th>
+                    <th style={{ padding: "0.7rem 0.85rem" }}>Assigned Role</th>
+                    <th style={{ padding: "0.7rem 0.85rem" }}>Role Change</th>
+                    <th style={{ padding: "0.7rem 0.85rem", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {userList.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td style={{ padding: "0.6rem", fontWeight: "600" }}>{u.full_name}</td>
-                      <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{u.email}</td>
-                      <td style={{ padding: "0.6rem" }}>
-                        <span className={`badge ${u.role === "Admin" ? "badge-ai" : u.role === "Analyst" ? "badge-vwap" : "badge-secondary"}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.6rem" }}>
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="select"
-                          style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", width: "120px" }}
-                        >
-                          <option value="Admin">Admin</option>
-                          <option value="Analyst">Analyst</option>
-                          <option value="Viewer">Viewer</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: "0.6rem", textAlign: "right" }}>
-                        <button
-                          onClick={() => handleDeleteUser(u.id, u.email)}
-                          disabled={u.id === user?.id}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: "0.2rem 0.4rem", color: "var(--bear-red)" }}
-                          title={u.id === user?.id ? "Cannot delete self" : "Delete user"}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                  {pagedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)" }}>
+                        No users matching "{userSearch}"
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    pagedUsers.map((u) => (
+                      <tr key={u.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                        <td style={{ padding: "0.7rem 0.85rem", fontWeight: "600" }}>{u.full_name}</td>
+                        <td className="font-mono" style={{ padding: "0.7rem 0.85rem", color: "var(--text-secondary)" }}>{u.email}</td>
+                        <td style={{ padding: "0.7rem 0.85rem" }}>
+                          <span className={`badge ${u.role === "Admin" ? "badge-ai" : u.role === "Analyst" ? "badge-vwap" : "badge-secondary"}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem" }}>
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            className="select"
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", width: "120px" }}
+                          >
+                            <option value="Admin">Admin</option>
+                            <option value="Analyst">Analyst</option>
+                            <option value="Viewer">Viewer</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: "0.7rem 0.85rem", textAlign: "right" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u.id, u.email)}
+                            disabled={u.id === user?.id}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "0.2rem 0.4rem", color: "var(--bear-red)" }}
+                            title={u.id === user?.id ? "Cannot delete self" : "Delete user"}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={userPage}
+              totalItems={filteredUsers.length}
+              pageSize={userPageSize}
+              pageSizeOptions={[5, 10, 20]}
+              onPageChange={(p) => setUserPage(p)}
+              onPageSizeChange={(s) => {
+                setUserPageSize(s);
+                setUserPage(1);
+              }}
+              itemLabel="users"
+            />
           </div>
         </div>
       )}
@@ -988,87 +1329,137 @@ export const AdminOpsCenter = () => {
       {/* MODAL: ADD COMPANY TO WATCHLIST (ADMIN)                        */}
       {/* ============================================================== */}
       {showAddCompanyModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
-        }}>
-          <div className="card" style={{ maxWidth: "480px", width: "100%" }}>
-            <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-              <div className="card-title">
-                <Plus size={18} color="var(--blue-accent)" />
-                <span>Add Tracked Company to Watchlist</span>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddCompanyModal(false);
+          }}
+        >
+          <div className="modal-container" role="dialog" aria-modal="true" aria-labelledby="add-company-title">
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <div className="modal-icon-badge blue">
+                  <Building2 size={18} />
+                </div>
+                <div>
+                  <div id="add-company-title" className="modal-title-text">
+                    Add Tracked Company
+                  </div>
+                  <div className="modal-subtitle-text">
+                    Provision telemetry &amp; crawler monitoring for a new NEPSE ticker.
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setShowAddCompanyModal(false)} className="action-msg-close">
+              <button
+                type="button"
+                onClick={() => setShowAddCompanyModal(false)}
+                className="modal-close-btn"
+                title="Close modal (Esc)"
+              >
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleAddCompany} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  TICKER SYMBOL (e.g. HBL)
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="HBL"
-                  value={newCompany.symbol}
-                  onChange={(e) => setNewCompany({ ...newCompany, symbol: e.target.value.toUpperCase() })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
+
+            <form onSubmit={handleAddCompany} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
+                {/* Ticker Symbol */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Ticker Symbol</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--blue-accent)", textTransform: "none", fontWeight: 500 }}>Required</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <Tag size={15} className="modal-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. HBL, UPPER"
+                      value={newCompany.symbol}
+                      onChange={(e) => setNewCompany({ ...newCompany, symbol: e.target.value.toUpperCase() })}
+                      className="modal-input font-mono"
+                      style={{ fontWeight: "700", letterSpacing: "0.04em" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Company Name */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Official Company Name</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--blue-accent)", textTransform: "none", fontWeight: 500 }}>Required</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <Building2 size={15} className="modal-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Himalayan Bank Limited"
+                      value={newCompany.name}
+                      onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
+                      className="modal-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Sector */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Sector Classification</span>
+                  </label>
+                  <div className="modal-select-wrapper">
+                    <Layers size={15} className="modal-input-icon" />
+                    <select
+                      value={newCompany.sector}
+                      onChange={(e) => setNewCompany({ ...newCompany, sector: e.target.value })}
+                      className="modal-select"
+                    >
+                      <option value="Commercial Banks">Commercial Banks</option>
+                      <option value="Manufacturing and Processing">Manufacturing and Processing</option>
+                      <option value="Hydro Power">Hydro Power</option>
+                      <option value="Investment">Investment</option>
+                      <option value="Development Banks">Development Banks</option>
+                      <option value="Others">Others</option>
+                    </select>
+                    <ChevronDown size={14} className="modal-select-chevron" />
+                  </div>
+                </div>
+
+                {/* Search Keywords / Aliases */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Aliases &amp; Search Keywords</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "none", fontWeight: 400 }}>Comma-separated</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <Search size={15} className="modal-input-icon" />
+                    <input
+                      type="text"
+                      placeholder="Himalayan Bank, HBL, Himalayan"
+                      value={newCompany.aliases}
+                      onChange={(e) => setNewCompany({ ...newCompany, aliases: e.target.value })}
+                      className="modal-input"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  OFFICIAL COMPANY NAME
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Himalayan Bank Limited"
-                  value={newCompany.name}
-                  onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  SECTOR
-                </label>
-                <select
-                  value={newCompany.sector}
-                  onChange={(e) => setNewCompany({ ...newCompany, sector: e.target.value })}
-                  className="select"
-                  style={{ width: "100%" }}
+
+              {/* Anchored Footer */}
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCompanyModal(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
                 >
-                  <option value="Commercial Banks">Commercial Banks</option>
-                  <option value="Manufacturing and Processing">Manufacturing and Processing</option>
-                  <option value="Hydro Power">Hydro Power</option>
-                  <option value="Investment">Investment</option>
-                  <option value="Development Banks">Development Banks</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  ALIASES / SEARCH KEYWORDS (comma separated)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Himalayan Bank, HBL"
-                  value={newCompany.aliases}
-                  onChange={(e) => setNewCompany({ ...newCompany, aliases: e.target.value })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <button type="button" onClick={() => setShowAddCompanyModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Provision Company &amp; Telemetry
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ padding: "0.5rem 1.25rem", fontSize: "0.8rem" }}
+                >
+                  <Plus size={14} />
+                  <span>Provision Company</span>
                 </button>
               </div>
             </form>
@@ -1080,85 +1471,173 @@ export const AdminOpsCenter = () => {
       {/* MODAL: CREATE USER (ADMIN)                                    */}
       {/* ============================================================== */}
       {showAddUserModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
-        }}>
-          <div className="card" style={{ maxWidth: "440px", width: "100%" }}>
-            <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-              <div className="card-title">
-                <Users size={18} color="var(--ai-purple)" />
-                <span>Create System User Account</span>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddUserModal(false);
+          }}
+        >
+          <div className="modal-container" role="dialog" aria-modal="true" aria-labelledby="create-user-modal-title">
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <div className="modal-icon-badge purple">
+                  <UserPlus size={18} />
+                </div>
+                <div>
+                  <div id="create-user-modal-title" className="modal-title-text">
+                    Create System User Account
+                  </div>
+                  <div className="modal-subtitle-text">
+                    Provision institutional credentials with role-based permissions.
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setShowAddUserModal(false)} className="action-msg-close">
+              <button
+                type="button"
+                onClick={() => setShowAddUserModal(false)}
+                className="modal-close-btn"
+                title="Close modal (Esc)"
+              >
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  FULL NAME
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. John Doe"
-                  value={newUser.full_name}
-                  onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
+
+            {/* Modal Body (Scrollable & Formatted) */}
+            <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
+                {/* Full Name */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Full Name</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--blue-accent)", textTransform: "none", fontWeight: 500 }}>Required</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <User size={15} className="modal-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. John Doe"
+                      value={newUser.full_name}
+                      onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                      className="modal-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Email Account */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Email Account</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--blue-accent)", textTransform: "none", fontWeight: 500 }}>Required</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <Mail size={15} className="modal-input-icon" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@omway.com"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="modal-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Initial Password */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>Initial Password</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "none", fontWeight: 400 }}>Min. 6 chars</span>
+                  </label>
+                  <div className="modal-input-wrapper">
+                    <Lock size={15} className="modal-input-icon" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="modal-input"
+                      style={{ paddingRight: "2.4rem" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: "absolute",
+                        right: "0.75rem",
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* RBAC Role Selector */}
+                <div className="modal-field">
+                  <label className="modal-label">
+                    <span>RBAC Role Permission</span>
+                  </label>
+                  <div className="modal-select-wrapper">
+                    <Shield size={15} className="modal-input-icon" />
+                    <select
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      className="modal-select"
+                    >
+                      <option value="Admin">Admin (Full System Authority)</option>
+                      <option value="Analyst">Analyst (Data Curation &amp; Exports)</option>
+                      <option value="Viewer">Viewer (Read-Only Access)</option>
+                    </select>
+                    <ChevronDown size={14} className="modal-select-chevron" />
+                  </div>
+
+                  {/* Dynamic Role Capability Card */}
+                  <div className="modal-role-card">
+                    {newUser.role === "Admin" && (
+                      <div>
+                        <strong style={{ color: "var(--ai-purple)" }}>🛡️ Admin Privileges:</strong> Full control over data crawlers, unattended scheduler, company watchlists, and user credential management.
+                      </div>
+                    )}
+                    {newUser.role === "Analyst" && (
+                      <div>
+                        <strong style={{ color: "var(--blue-accent)" }}>📊 Analyst Privileges:</strong> Full market matrix telemetry, news categorization auditing, model fine-tuning corpus curation, and PDF report exports.
+                      </div>
+                    )}
+                    {newUser.role === "Viewer" && (
+                      <div>
+                        <strong style={{ color: "var(--bull-green)" }}>👁️ Viewer Privileges:</strong> Read-only real-time NEPSE charts, VWAP anomaly alerts, and institutional sentiment telemetry.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  EMAIL ACCOUNT
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@omway.com"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  INITIAL PASSWORD
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="******"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="input"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  RBAC ROLE
-                </label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  className="select"
-                  style={{ width: "100%" }}
+
+              {/* Anchored Modal Footer */}
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
                 >
-                  <option value="Admin">Admin (Full Control, Watchlist, Users, Crawlers)</option>
-                  <option value="Analyst">Analyst (All Data, News Recategorize, Report Export)</option>
-                  <option value="Viewer">Viewer (Read-Only Dashboards)</option>
-                </select>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <button type="button" onClick={() => setShowAddUserModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Create User
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ padding: "0.5rem 1.25rem", fontSize: "0.8rem" }}
+                >
+                  <UserPlus size={14} />
+                  <span>Provision Account</span>
                 </button>
               </div>
             </form>
@@ -1170,74 +1649,99 @@ export const AdminOpsCenter = () => {
       {/* MODAL: FAILURE DIAGNOSTIC TRACEBACK INSPECTOR                 */}
       {/* ============================================================== */}
       {selectedError && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
-        }}>
-          <div className="card" style={{ maxWidth: "640px", width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
-            <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-              <div className="card-title" style={{ color: "var(--bear-red)" }}>
-                <FileWarning size={18} />
-                <span>Crawler Failure Diagnostic Traceback</span>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedError(null);
+          }}
+        >
+          <div className="modal-container modal-lg" role="dialog" aria-modal="true" aria-labelledby="error-trace-title">
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <div className="modal-icon-badge red">
+                  <FileWarning size={18} />
+                </div>
+                <div>
+                  <div id="error-trace-title" className="modal-title-text" style={{ color: "var(--bear-red)" }}>
+                    Crawler Failure Diagnostic Traceback
+                  </div>
+                  <div className="modal-subtitle-text">
+                    Detailed system stack trace and ingestion failure metadata.
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setSelectedError(null)} className="action-msg-close">
+              <button
+                type="button"
+                onClick={() => setSelectedError(null)}
+                className="modal-close-btn"
+                title="Dismiss inspector"
+              >
                 <X size={16} />
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
-              <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>TARGET PORTAL</div>
-                <div style={{ fontWeight: "600", fontSize: "0.85rem" }}>{selectedError.portal}</div>
+            <div className="modal-body">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.75rem" }}>
+                <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>TARGET PORTAL</div>
+                  <div style={{ fontWeight: "600", fontSize: "0.85rem" }}>{selectedError.portal}</div>
+                </div>
+                <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>INGESTION TYPE</div>
+                  <div style={{ fontWeight: "600", fontSize: "0.85rem" }}>{selectedError.crawl_type}</div>
+                </div>
+                <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>TIMESTAMP</div>
+                  <div className="font-mono" style={{ fontSize: "0.8rem" }}>{new Date(selectedError.started_at).toLocaleString()}</div>
+                </div>
+                <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>STATUS</div>
+                  <div><span className="badge badge-bear">{selectedError.status}</span></div>
+                </div>
               </div>
-              <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>INGESTION TYPE</div>
-                <div style={{ fontWeight: "600", fontSize: "0.85rem" }}>{selectedError.crawl_type}</div>
-              </div>
-              <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>TIMESTAMP</div>
-                <div className="font-mono" style={{ fontSize: "0.8rem" }}>{new Date(selectedError.started_at).toLocaleString()}</div>
-              </div>
-              <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>STATUS</div>
-                <div><span className="badge badge-bear">{selectedError.status}</span></div>
+
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.45rem" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600" }}>ERROR DIAGNOSTIC TRACE</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedError.error_message || "");
+                      setCopiedError(true);
+                      setTimeout(() => setCopiedError(false), 2000);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: "0.7rem", padding: "0.2rem 0.55rem" }}
+                  >
+                    {copiedError ? <Check size={12} color="var(--bull-green)" /> : <Copy size={12} />}
+                    <span>{copiedError ? "Copied" : "Copy Trace"}</span>
+                  </button>
+                </div>
+                <pre className="font-mono" style={{
+                  background: "var(--bg-input)",
+                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                  padding: "0.85rem",
+                  borderRadius: "8px",
+                  color: "var(--bear-red)",
+                  fontSize: "0.78rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  lineHeight: "1.5",
+                  maxHeight: "220px",
+                  overflowY: "auto"
+                }}>
+                  {selectedError.error_message || "No specific error trace surfaced."}
+                </pre>
               </div>
             </div>
 
-            <div style={{ marginBottom: "1.25rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600" }}>ERROR DIAGNOSTIC TRACE</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(selectedError.error_message || "");
-                    setCopiedError(true);
-                    setTimeout(() => setCopiedError(false), 2000);
-                  }}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem" }}
-                >
-                  {copiedError ? <Check size={12} color="var(--bull-green)" /> : <Copy size={12} />}
-                  <span>{copiedError ? "Copied" : "Copy Error"}</span>
-                </button>
-              </div>
-              <pre className="font-mono" style={{
-                background: "var(--bg-input)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                padding: "0.85rem",
-                borderRadius: "8px",
-                color: "var(--bear-red)",
-                fontSize: "0.78rem",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                lineHeight: "1.5"
-              }}>
-                {selectedError.error_message || "No specific error text surfaced."}
-              </pre>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={() => setSelectedError(null)} className="btn btn-secondary">
+            <div className="modal-footer">
+              <button
+                type="button"
+                onClick={() => setSelectedError(null)}
+                className="btn btn-secondary"
+                style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
+              >
                 Dismiss Inspector
               </button>
             </div>
