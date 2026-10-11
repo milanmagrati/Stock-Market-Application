@@ -1,0 +1,64 @@
+{
+  "companies": [
+    {
+      "symbol": "NABIL",
+      "name": "Nabil Bank Limited",
+      "sector": "Commercial Banks",
+      "aliases": ["Nabil", "Nabil Bank"]
+    },
+    {
+      "symbol": "GBIME",
+      "name": "Global IME Bank Limited",
+      "sector": "Commercial Banks",
+      "aliases": ["Global IME", "Global IME Bank"]
+    },
+    {
+      "symbol": "NICA",
+      "name": "NIC Asia Bank Limited",
+      "sector": "Commercial Banks",
+      "aliases": ["NIC Asia", "NIC Asia Bank"]
+    },
+    {
+      "symbol": "SHIVM",
+      "name": "Shivam Cements Limited",
+      "sector": "Manufacturing and Processing",
+      "aliases": ["Shivam Cement", "Shivam", "Shivam Cements"]
+    },
+    {
+      "symbol": "HDL",
+      "name": "Himalayan Distillery Limited",
+      "sector": "Manufacturing and Processing",
+      "aliases": ["Himalayan Distillery", "HDL"]
+    },
+    {
+      "symbol": "CIT",
+      "name": "Citizen Investment Trust",
+      "sector": "Investment",
+      "aliases": ["Citizen Investment Trust", "Nagarik Lagani Kosh", "CIT"]
+    },
+    {
+      "symbol": "CHCL",
+      "name": "Chilime Hydropower Co. Limited",
+      "sector": "Hydro Power",
+      "aliases": ["Chilime", "Chilime Hydropower"]
+    },
+    {
+      "symbol": "UPPER",
+      "name": "Upper Tamakoshi Hydropower Limited",
+      "sector": "Hydro Power",
+      "aliases": ["Upper Tamakoshi", "Tamakoshi Hydropower"]
+    },
+    {
+      "symbol": "NTC",
+      "name": "Nepal Doorsanchar Company Limited",
+      "sector": "Others",
+      "aliases": ["Nepal Telecom", "NTC", "Doorsanchar"]
+    },
+    {
+      "symbol": "SHINE",
+      "name": "Shine Resunga Development Bank Limited",
+      "sector": "Development Banks",
+      "aliases": ["Shine Resunga", "Shine Resunga Bank"]
+    }
+  ]
+}

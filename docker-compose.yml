@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB time-series extensions
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: nepse_timescaledb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: nepse_market
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Message Queue & Cache
+  redis:
+    image: redis:7-alpine
+    container_name: nepse_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend Service (Serves REST, WebSocket & Built React Frontend)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: nepse_backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@timescaledb:5432/nepse_market
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=omway-production-secret-key-stock-market-nepse
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # Celery Background Crawler Worker
+  crawler_worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: nepse_crawler_worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@timescaledb:5432/nepse_market
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    command: ["celery", "-A", "app.main", "worker", "--loglevel=info"]
+    depends_on:
+      - redis
+      - timescaledb
+    restart: always
+
+volumes:
+  timescale_data:
