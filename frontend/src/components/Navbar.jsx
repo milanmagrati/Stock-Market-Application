@@ -7,16 +7,18 @@ import {
   ShieldCheck, 
   Radio, 
   Layers, 
-  UserCheck 
+  UserCheck,
+  Sun,
+  Moon
 } from "lucide-react";
 
-export const Navbar = ({ activeTab, setActiveTab, wsConnected }) => {
+export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleTheme }) => {
   const { user, switchRole } = useAuth();
 
   return (
     <header style={{
       borderBottom: "1px solid var(--border-color)",
-      background: "rgba(17, 24, 39, 0.8)",
+      background: "var(--bg-secondary)",
       backdropFilter: "blur(12px)",
       position: "sticky",
       top: 0,
@@ -141,6 +143,22 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected }) => {
               </button>
             ))}
           </div>
+
+          {/* Animated Stylish Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+          >
+            <div className="theme-icon-container">
+              {theme === "dark" ? (
+                <Sun size={14} color="#f59e0b" />
+              ) : (
+                <Moon size={14} color="#3b82f6" />
+              )}
+            </div>
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
         </div>
       </div>
     </header>

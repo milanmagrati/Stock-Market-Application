@@ -29,6 +29,18 @@ function DashboardContent() {
   const [alerts, setAlerts] = useState([]);
   const wsRef = useRef(null);
 
+  // Theme state: default "dark", with localStorage persistence
+  const [theme, setTheme] = useState(() => localStorage.getItem("nepse_theme") || "dark");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("nepse_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
   // Refresh & Telemetry Pulse state
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSyncedTime, setLastSyncedTime] = useState(new Date().toLocaleTimeString());
@@ -187,6 +199,8 @@ function DashboardContent() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         wsConnected={wsConnected}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       {/* Ticker Bar */}

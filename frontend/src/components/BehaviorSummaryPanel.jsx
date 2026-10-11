@@ -149,7 +149,7 @@ export const BehaviorSummaryPanel = ({ behaviorData }) => {
       </div>
 
       {/* Section 3 Written Findings Card */}
-      <div className="card" style={{ background: "linear-gradient(180deg, #161f33 0%, #111827 100%)" }}>
+      <div className="card" style={{ background: "var(--bg-card)" }}>
         <div className="card-header">
           <div className="card-title">
             <FileText size={18} color="var(--blue-accent)" />
