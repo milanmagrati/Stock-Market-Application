@@ -54,7 +54,7 @@ const PORTALS = [
 ];
 
 export const AdminOpsCenter = () => {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
   const [subTab, setSubTab] = useState("crawlers"); // "crawlers", "watchlist", "users", "corrections"
   
   // Crawler & Scheduler State
@@ -686,7 +686,7 @@ export const AdminOpsCenter = () => {
               </div>
             </div>
 
-            {/* Non-Admin Security Enclave Notice with 1-Click Role Switch */}
+            {/* Non-Admin Security Enclave Notice */}
             {!isAdmin && (
               <div style={{
                 background: "rgba(245, 158, 11, 0.08)",
@@ -695,81 +695,41 @@ export const AdminOpsCenter = () => {
                 padding: "0.85rem 1rem",
                 marginBottom: "1rem",
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "1rem",
-                flexWrap: "wrap"
+                alignItems: "flex-start",
+                gap: "0.75rem"
               }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", flex: 1, minWidth: "260px" }}>
-                  <div style={{
-                    background: "rgba(245, 158, 11, 0.15)",
-                    border: "1px solid rgba(245, 158, 11, 0.3)",
-                    borderRadius: "8px",
-                    padding: "0.5rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    color: "var(--anomaly-amber)"
-                  }}>
-                    <Lock size={18} />
+                <div style={{
+                  background: "rgba(245, 158, 11, 0.15)",
+                  border: "1px solid rgba(245, 158, 11, 0.3)",
+                  borderRadius: "8px",
+                  padding: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  color: "var(--anomaly-amber)"
+                }}>
+                  <Lock size={18} />
+                </div>
+                <div style={{ fontSize: "0.8rem", lineHeight: "1.45" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "600", color: "var(--anomaly-amber)" }}>
+                    <span>Protected Ingestion Dispatch Enclave</span>
+                    <span style={{
+                      fontSize: "0.68rem",
+                      background: "rgba(245, 158, 11, 0.2)",
+                      color: "var(--anomaly-amber)",
+                      padding: "0.1rem 0.45rem",
+                      borderRadius: "4px",
+                      fontWeight: "700",
+                      letterSpacing: "0.03em"
+                    }}>
+                      ROLE: {user?.role ? user.role.toUpperCase() : "VIEWER"}
+                    </span>
                   </div>
-                  <div style={{ fontSize: "0.8rem", lineHeight: "1.45" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "600", color: "var(--anomaly-amber)" }}>
-                      <span>Protected Ingestion Dispatch Enclave</span>
-                      <span style={{
-                        fontSize: "0.68rem",
-                        background: "rgba(245, 158, 11, 0.2)",
-                        color: "var(--anomaly-amber)",
-                        padding: "0.1rem 0.45rem",
-                        borderRadius: "4px",
-                        fontWeight: "700",
-                        letterSpacing: "0.03em"
-                      }}>
-                        ROLE: {user?.role ? user.role.toUpperCase() : "VIEWER"}
-                      </span>
-                    </div>
-                    <div style={{ color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                      Manual spider dispatch triggers concurrent headless scrapers across external portals with strict token-bucket rate limits (2.0s). In accordance with platform governance, dispatch controls are locked for <strong>{user?.role || "Viewer"}</strong> sessions.
-                    </div>
+                  <div style={{ color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                    Manual spider dispatch triggers concurrent headless scrapers across external portals with strict token-bucket rate limits (2.0s). In accordance with platform governance, dispatch controls are locked for <strong>{user?.role || "Viewer"}</strong> sessions. Switch role via the top navigation bar to access administrative operations.
                   </div>
                 </div>
-
-                {/* Recruiter Evaluation Fast-Switch Button */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await switchRole("Admin");
-                      setActionMsg({
-                        type: "success",
-                        title: "Role Elevated to Admin",
-                        text: "Switched session to Admin mode. Distributed Ingestion Queue Dispatcher unlocked."
-                      });
-                    } catch (e) {
-                      console.error(e);
-                    }
-                  }}
-                  className="btn btn-sm"
-                  style={{
-                    background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(59, 130, 246, 0.25))",
-                    border: "1px solid rgba(245, 158, 11, 0.5)",
-                    color: "var(--text-primary)",
-                    fontWeight: "600",
-                    padding: "0.5rem 0.9rem",
-                    fontSize: "0.78rem",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.45rem",
-                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.15)",
-                    cursor: "pointer",
-                    borderRadius: "7px"
-                  }}
-                  title="Switch to Admin role to evaluate real-time crawler pipeline dispatch"
-                >
-                  <ShieldCheck size={14} color="var(--bull-green)" />
-                  <span>Switch to Admin (Demo 1-Click)</span>
-                </button>
               </div>
             )}
 
