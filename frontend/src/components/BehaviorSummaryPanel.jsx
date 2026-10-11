@@ -6,10 +6,11 @@ import {
   AlertCircle, 
   FileText, 
   Cpu, 
-  Scale 
+  Scale,
+  Download
 } from "lucide-react";
 
-export const BehaviorSummaryPanel = ({ behaviorData }) => {
+export const BehaviorSummaryPanel = ({ behaviorData, onOpenExport }) => {
   if (!behaviorData) return null;
 
   const {
@@ -155,7 +156,20 @@ export const BehaviorSummaryPanel = ({ behaviorData }) => {
             <FileText size={18} color="var(--blue-accent)" />
             <span>Section 3: Empirical Behavior Findings &amp; Pattern Synthesis</span>
           </div>
-          <span className="badge badge-ai">Automated AI Synthesis</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span className="badge badge-ai">Automated AI Synthesis</span>
+            {onOpenExport && (
+              <button
+                onClick={onOpenExport}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: "0.72rem", padding: "0.2rem 0.5rem" }}
+                title="Export Institutional Market Report"
+              >
+                <Download size={12} />
+                <span>Export Report</span>
+              </button>
+            )}
+          </div>
         </div>
         <div style={{
           fontSize: "0.86rem",

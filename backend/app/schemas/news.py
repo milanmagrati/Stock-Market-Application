@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class ArticleTagOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     company_id: int
     company_symbol: Optional[str] = None
@@ -12,10 +14,9 @@ class ArticleTagOut(BaseModel):
     corrected_by: Optional[str] = None
     corrected_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
 class NewsArticleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     url: str
     headline: str
@@ -25,9 +26,6 @@ class NewsArticleOut(BaseModel):
     source_portal: str
     created_at: datetime
     tags: List[ArticleTagOut] = []
-
-    class Config:
-        from_attributes = True
 
 class RecategorizeRequest(BaseModel):
     company_id: int
@@ -41,3 +39,19 @@ class RecategorizeResponse(BaseModel):
     article_id: int
     company_id: int
     updated_tags: List[ArticleTagOut] = []
+
+class CategorizationCorrectionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    article_id: int
+    article_headline: Optional[str] = None
+    company_id: int
+    company_symbol: Optional[str] = None
+    company_name: Optional[str] = None
+    action: str
+    previous_confidence: Optional[float] = None
+    new_confidence: Optional[float] = None
+    user_email: str
+    notes: Optional[str] = None
+    created_at: datetime

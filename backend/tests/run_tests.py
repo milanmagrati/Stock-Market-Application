@@ -112,8 +112,39 @@ async def run_all_tests():
         assert adm_crawl.status_code == 200, f"Expected 200 for Admin on crawl run, got {adm_crawl.status_code}"
         print(f" [PASS] RBAC Check 4: Admin successfully triggered crawl job ({adm_crawl.json()['task_id']})")
 
+        # 10. RBAC Report Export Check
+        # Viewer -> 403 Forbidden
+        v_exp = await client.get(
+            "/api/reports/export?company_id=1&format=csv",
+            headers={"Authorization": f"Bearer {viewer_token}"}
+        )
+        assert v_exp.status_code == 403
+        print(" [PASS] RBAC Check 5: Viewer blocked with 403 Forbidden on report export")
+
+        # Analyst -> 200 OK
+        a_exp = await client.get(
+            "/api/reports/export?company_id=1&format=csv",
+            headers={"Authorization": f"Bearer {analyst_token}"}
+        )
+        assert a_exp.status_code == 200
+        print(" [PASS] RBAC Check 6: Analyst exported institutional report (CSV)")
+
+        # 11. RBAC User Management
+        u_res = await client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+        assert u_res.status_code == 200
+        print(f" [PASS] RBAC Check 7: Admin retrieved user governance roster ({len(u_res.json())} users)")
+
+        # 12. Scheduler & Retraining Log Check
+        s_res = await client.get("/api/admin/scheduler", headers={"Authorization": f"Bearer {analyst_token}"})
+        assert s_res.status_code == 200
+        print(" [PASS] Scheduler Check: Background unattended scheduler active")
+
+        c_res = await client.get("/api/news/corrections", headers={"Authorization": f"Bearer {analyst_token}"})
+        assert c_res.status_code == 200
+        print(f" [PASS] News Audit Check: Retraining dataset accessible ({len(c_res.json())} logged corrections)")
+
     print("=" * 60)
-    print("ALL 9 CRITICAL INTEGRATION TESTS PASSED PERFECTLY!")
+    print("ALL 12 CRITICAL INTEGRATION TESTS PASSED PERFECTLY!")
     print("=" * 60)
 
 if __name__ == "__main__":

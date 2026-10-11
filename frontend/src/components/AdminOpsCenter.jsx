@@ -23,7 +23,17 @@ import {
   Filter,
   Eye,
   Copy,
-  Check
+  Check,
+  Plus,
+  Trash2,
+  Sliders,
+  Download,
+  Calendar,
+  Layers,
+  Tag,
+  ToggleLeft,
+  ToggleRight,
+  Database
 } from "lucide-react";
 import { Pagination } from "./Pagination";
 
@@ -36,16 +46,35 @@ const PORTALS = [
 
 export const AdminOpsCenter = () => {
   const { user } = useAuth();
+  const [subTab, setSubTab] = useState("crawlers"); // "crawlers", "watchlist", "users", "corrections"
+  
+  // Crawler & Scheduler State
   const [crawlLogs, setCrawlLogs] = useState([]);
-  const [userList, setUserList] = useState([]);
   const [selectedPortal, setSelectedPortal] = useState("all");
   const [selectedType, setSelectedType] = useState("NEWS");
   const [loading, setLoading] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
-  const [activeScan, setActiveScan] = useState(false);
   const [actionMsg, setActionMsg] = useState(null);
+  const [schedulerStatus, setSchedulerStatus] = useState(null);
 
-  // Pagination & Filtering state for logs
+  // Watchlist State
+  const [companies, setCompanies] = useState([]);
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [newCompany, setNewCompany] = useState({ symbol: "", name: "", sector: "Commercial Banks", aliases: "" });
+  const [isSyncingConfig, setIsSyncingConfig] = useState(false);
+
+  // User Governance State
+  const [userList, setUserList] = useState([]);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "Analyst" });
+
+  // News Corrections State
+  const [corrections, setCorrections] = useState([]);
+  const [corrPage, setCorrPage] = useState(1);
+  const [corrPageSize, setCorrPageSize] = useState(10);
+  const [corrSearch, setCorrSearch] = useState("");
+
+  // Crawler Logs Pagination & Filtering state
   const [logPage, setLogPage] = useState(1);
   const [logPageSize, setLogPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -60,6 +89,7 @@ export const AdminOpsCenter = () => {
   const isAdmin = user?.role === "Admin";
   const isAnalystOrAdmin = user?.role === "Admin" || user?.role === "Analyst";
 
+  // Data Fetching
   const fetchLogs = async () => {
     if (!isAnalystOrAdmin) return;
     setIsRefreshingLogs(true);
@@ -73,6 +103,16 @@ export const AdminOpsCenter = () => {
     }
   };
 
+  const fetchScheduler = async () => {
+    if (!isAnalystOrAdmin) return;
+    try {
+      const status = await api.getSchedulerStatus();
+      setSchedulerStatus(status);
+    } catch (err) {
+      console.warn("Could not load scheduler status:", err.message);
+    }
+  };
+
   const fetchUsers = async () => {
     if (!isAdmin) return;
     try {
@@ -83,20 +123,196 @@ export const AdminOpsCenter = () => {
     }
   };
 
+  const fetchWatchlist = async () => {
+    try {
+      const compList = await api.getCompanies();
+      setCompanies(compList);
+    } catch (err) {
+      console.warn("Could not load companies:", err.message);
+    }
+  };
+
+  const fetchCorrections = async () => {
+    if (!isAnalystOrAdmin) return;
+    try {
+      const data = await api.getNewsCorrections(200);
+      setCorrections(data);
+    } catch (err) {
+      console.warn("Could not load corrections:", err.message);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
-    fetchUsers();
+    fetchScheduler();
+    fetchWatchlist();
+    if (isAdmin) fetchUsers();
+    if (isAnalystOrAdmin) fetchCorrections();
   }, [user]);
+
+  // Crawler Trigger Handler
+  const handleTriggerCrawl = async () => {
+    if (!isAdmin) return;
+    setLoading(true);
+    setActionMsg(null);
+    try {
+      const res = await api.triggerCrawlRun(selectedPortal, selectedType);
+      setDispatchSuccess(true);
+      setActionMsg({
+        type: "success",
+        title: "Crawl Job Enqueued Successfully",
+        text: `Job #${res.task_id} successfully queued for portal '${selectedPortal}'. Queue workers are executing crawler pipelines.`
+      });
+      setTimeout(() => {
+        setDispatchSuccess(false);
+        fetchLogs();
+        fetchScheduler();
+      }, 2500);
+    } catch (err) {
+      setActionMsg({
+        type: "error",
+        title: "Crawl Trigger Failed",
+        text: err.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Scheduler Controls
+  const handleToggleScheduler = async () => {
+    if (!isAdmin || !schedulerStatus) return;
+    try {
+      const updated = await api.toggleScheduler(!schedulerStatus.is_active);
+      setSchedulerStatus(updated);
+      setActionMsg({
+        type: "success",
+        title: updated.is_active ? "Unattended Scheduler Activated" : "Unattended Scheduler Paused",
+        text: updated.message
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Scheduler Update Error", text: err.message });
+    }
+  };
+
+  // Watchlist Actions
+  const handleAddCompany = async (e) => {
+    e.preventDefault();
+    if (!isAdmin || !newCompany.symbol.trim() || !newCompany.name.trim()) return;
+    try {
+      await api.addCompany(newCompany);
+      setShowAddCompanyModal(false);
+      setNewCompany({ symbol: "", name: "", sector: "Commercial Banks", aliases: "" });
+      await fetchWatchlist();
+      setActionMsg({
+        type: "success",
+        title: "Company Added to Watchlist",
+        text: `Successfully provisioned ${newCompany.symbol.toUpperCase()} with 30-day baseline telemetry and floorsheets.`
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Add Company Failed", text: err.message });
+    }
+  };
+
+  const handleToggleCompanyActive = async (id, currentStatus) => {
+    if (!isAdmin) return;
+    try {
+      await api.toggleCompanyActive(id);
+      await fetchWatchlist();
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Update Failed", text: err.message });
+    }
+  };
+
+  const handleDeleteCompany = async (id, symbol) => {
+    if (!isAdmin) return;
+    if (!window.confirm(`Are you sure you want to remove ${symbol} from the active watchlist?`)) return;
+    try {
+      await api.deleteCompany(id);
+      await fetchWatchlist();
+      setActionMsg({
+        type: "success",
+        title: "Watchlist Updated",
+        text: `Company ${symbol} removed from watchlist.`
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Delete Failed", text: err.message });
+    }
+  };
+
+  const handleSyncConfig = async () => {
+    if (!isAdmin) return;
+    setIsSyncingConfig(true);
+    try {
+      const res = await api.syncCompanyConfig();
+      await fetchWatchlist();
+      setActionMsg({
+        type: "success",
+        title: "Watchlist Config Sync Complete",
+        text: res.message
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Config Sync Failed", text: err.message });
+    } finally {
+      setIsSyncingConfig(false);
+    }
+  };
+
+  // User Governance Actions
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    try {
+      await api.createUser(newUser);
+      setShowAddUserModal(false);
+      setNewUser({ full_name: "", email: "", password: "", role: "Analyst" });
+      await fetchUsers();
+      setActionMsg({
+        type: "success",
+        title: "User Created Successfully",
+        text: `Account for ${newUser.email} (${newUser.role}) provisioned.`
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "User Creation Failed", text: err.message });
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    if (!isAdmin) return;
+    try {
+      await api.updateUserRole(userId, newRole);
+      await fetchUsers();
+      setActionMsg({
+        type: "success",
+        title: "Role Updated Server-Side",
+        text: `User permissions modified to '${newRole}'.`
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Role Update Failed", text: err.message });
+    }
+  };
+
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (!isAdmin) return;
+    if (!window.confirm(`Delete system user '${userEmail}'?`)) return;
+    try {
+      await api.deleteUser(userId);
+      await fetchUsers();
+      setActionMsg({
+        type: "success",
+        title: "User Removed",
+        text: `User ${userEmail} was deleted successfully.`
+      });
+    } catch (err) {
+      setActionMsg({ type: "error", title: "Delete User Failed", text: err.message });
+    }
+  };
 
   // Filter logs based on search, portal, and status
   const filteredLogs = useMemo(() => {
     return crawlLogs.filter((log) => {
-      if (statusFilter !== "ALL" && log.status !== statusFilter) {
-        return false;
-      }
-      if (filterPortal !== "all" && log.portal !== filterPortal) {
-        return false;
-      }
+      if (statusFilter !== "ALL" && log.status !== statusFilter) return false;
+      if (filterPortal !== "all" && log.portal !== filterPortal) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const inPortal = log.portal?.toLowerCase().includes(q);
@@ -124,504 +340,366 @@ export const AdminOpsCenter = () => {
         aVal = String(aVal || "").toLowerCase();
         bVal = String(bVal || "").toLowerCase();
       }
-      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
-      return 0;
+      return sortDirection === "asc" ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
     });
   }, [filteredLogs, sortField, sortDirection]);
 
-  // Auto-clamp page if sortedLogs length decreases
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(sortedLogs.length / logPageSize));
-    if (logPage > totalPages) {
-      setLogPage(1);
-    }
-  }, [sortedLogs.length, logPageSize]);
-
-  // Paginated window
-  const paginatedLogs = useMemo(() => {
+  const pagedLogs = useMemo(() => {
     const start = (logPage - 1) * logPageSize;
     return sortedLogs.slice(start, start + logPageSize);
   }, [sortedLogs, logPage, logPageSize]);
 
-  const successCount = crawlLogs.filter((l) => l.status === "SUCCESS").length;
-  const failedCount = crawlLogs.filter((l) => l.status === "FAILED").length;
-
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDirection(field === "started_at" ? "desc" : "asc");
-    }
-  };
-
-  const renderSortIndicator = (field) => {
-    if (sortField !== field) {
-      return (
-        <span className="sort-icon-box" style={{ opacity: 0.35 }}>
-          <ArrowUpDown size={11} />
-        </span>
-      );
-    }
-    return (
-      <span className="sort-icon-box" style={{ color: "var(--blue-accent)" }}>
-        {sortDirection === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-      </span>
+  // Filter corrections
+  const filteredCorrections = useMemo(() => {
+    if (!corrSearch.trim()) return corrections;
+    const q = corrSearch.toLowerCase().trim();
+    return corrections.filter((c) => 
+      c.company_symbol?.toLowerCase().includes(q) ||
+      c.article_headline?.toLowerCase().includes(q) ||
+      c.user_email?.toLowerCase().includes(q) ||
+      c.action?.toLowerCase().includes(q)
     );
-  };
+  }, [corrections, corrSearch]);
 
-  const handleTriggerCrawl = async () => {
-    if (!isAdmin) {
-      setActionMsg({ type: "error", text: "Error: Triggering crawl runs requires Admin role." });
-      return;
-    }
-    setLoading(true);
-    setActiveScan(true);
-    setActionMsg(null);
-    try {
-      const res = await api.triggerCrawlRun(selectedPortal, selectedType);
-      setDispatchSuccess(true);
-      setActionMsg({
-        type: "success",
-        text: `Success: ${res.message} (Target: ${selectedPortal})`
-      });
-      setTimeout(() => fetchLogs(), 1200);
-      setTimeout(() => setDispatchSuccess(false), 2400);
-      setTimeout(() => setActionMsg(null), 6000);
-    } catch (err) {
-      setActionMsg({ type: "error", text: `Error: ${err.message}` });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setActiveScan(false), 2500);
-    }
-  };
+  const pagedCorrections = useMemo(() => {
+    const start = (corrPage - 1) * corrPageSize;
+    return filteredCorrections.slice(start, start + corrPageSize);
+  }, [filteredCorrections, corrPage, corrPageSize]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      {/* RBAC Notice Banner if not Admin */}
-      {!isAdmin && (
+      {/* Header and Operational Sub-tabs */}
+      <div style={{
+        background: "var(--bg-secondary)",
+        borderRadius: "12px",
+        padding: "1rem 1.25rem",
+        border: "1px solid var(--border-color)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "1rem"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{
+            background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff"
+          }}>
+            <Bot size={20} />
+          </div>
+          <div>
+            <div style={{ fontWeight: "700", fontSize: "1.05rem" }}>
+              Operations &amp; Governance Center
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+              Data Pipeline Automation, Watchlist Config, Role RBAC &amp; AI Retraining
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-tab Pills */}
+        <div style={{ display: "flex", gap: "0.4rem", background: "var(--bg-input)", padding: "0.25rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
+          <button
+            onClick={() => setSubTab("crawlers")}
+            className={`btn btn-sm ${subTab === "crawlers" ? "btn-primary" : "btn-secondary"}`}
+            style={{ fontSize: "0.76rem" }}
+          >
+            <Server size={13} />
+            <span>Crawlers &amp; Scheduler</span>
+          </button>
+          
+          {isAdmin && (
+            <button
+              onClick={() => setSubTab("watchlist")}
+              className={`btn btn-sm ${subTab === "watchlist" ? "btn-primary" : "btn-secondary"}`}
+              style={{ fontSize: "0.76rem" }}
+            >
+              <Database size={13} />
+              <span>Watchlist Mgmt</span>
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              onClick={() => setSubTab("users")}
+              className={`btn btn-sm ${subTab === "users" ? "btn-primary" : "btn-secondary"}`}
+              style={{ fontSize: "0.76rem" }}
+            >
+              <Users size={13} />
+              <span>RBAC User Governance</span>
+            </button>
+          )}
+
+          {isAnalystOrAdmin && (
+            <button
+              onClick={() => setSubTab("corrections")}
+              className={`btn btn-sm ${subTab === "corrections" ? "btn-primary" : "btn-secondary"}`}
+              style={{ fontSize: "0.76rem" }}
+            >
+              <Tag size={13} />
+              <span>News Audit &amp; Retraining ({corrections.length})</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Global Action Message Banner */}
+      {actionMsg && (
         <div style={{
-          background: "rgba(245, 158, 11, 0.15)",
-          border: "1px solid rgba(245, 158, 11, 0.4)",
-          borderRadius: "8px",
+          background: actionMsg.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+          border: `1px solid ${actionMsg.type === "success" ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
+          borderRadius: "10px",
           padding: "0.75rem 1rem",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: "0.6rem",
-          fontSize: "0.85rem",
-          color: "var(--anomaly-amber)"
+          fontSize: "0.82rem"
         }}>
-          <ShieldAlert size={18} />
           <div>
-            <strong>RBAC Notice:</strong> You are currently logged in as <strong>{user?.role || "Viewer"}</strong>.
-            Crawl execution is restricted to <strong>Admin</strong>. Switch role in the top header to test administrative permissions.
+            <strong style={{ color: actionMsg.type === "success" ? "var(--bull-green)" : "var(--bear-red)" }}>
+              {actionMsg.title}:{" "}
+            </strong>
+            <span style={{ color: "var(--text-primary)" }}>{actionMsg.text}</span>
           </div>
+          <button onClick={() => setActionMsg(null)} className="action-msg-close">
+            <X size={14} />
+          </button>
         </div>
       )}
 
-      {/* Target Portals Health Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
-        {PORTALS.map((p) => {
-          const isTargeted = activeScan && (selectedPortal === "all" || selectedPortal === p.name);
-          return (
-            <div
-              key={p.name}
-              className={`card ${isTargeted ? "telemetry-pulse" : ""}`}
-              style={{
-                transition: "all 0.3s ease",
-                borderColor: isTargeted ? "var(--blue-accent)" : "var(--border-color)"
-              }}
-            >
-              <div className="card-header" style={{ marginBottom: "0.4rem" }}>
-                <span style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "0.9rem" }}>{p.name}</span>
-                <span className="badge badge-bull">Active</span>
+      {/* ============================================================== */}
+      {/* SUB-TAB 1: CRAWLERS & AUTOMATED UNATTENDED SCHEDULER           */}
+      {/* ============================================================== */}
+      {subTab === "crawlers" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Unattended Scheduler Banner & Rate Limits */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "1rem"
+          }}>
+            {/* Automated Periodic Scheduler Card */}
+            <div className="card" style={{ border: "1px solid rgba(59, 130, 246, 0.3)" }}>
+              <div className="card-header">
+                <div className="card-title">
+                  <Clock size={16} color="var(--blue-accent)" />
+                  <span>Unattended Background Scheduler</span>
+                </div>
+                <span className={`badge ${schedulerStatus?.is_active ? "badge-bull" : "badge-anomaly"}`}>
+                  {schedulerStatus?.is_active ? "ACTIVE & RUNNING" : "PAUSED"}
+                </span>
               </div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-                {p.type}
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: "1.5" }}>
+                {schedulerStatus?.message || "Running automated queue-based ingestion without manual intervention."}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border-color)", paddingTop: "0.4rem" }}>
-                <span>Rate Limit: <strong style={{ color: "var(--text-primary)" }}>{p.rateLimit}</strong></span>
-                <span>Robots.txt: <strong style={{ color: "var(--bull-green)" }}>{p.robots}</strong></span>
+              <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                <div>Interval: <strong style={{ color: "var(--text-primary)" }}>{schedulerStatus?.interval_minutes || 30}m</strong></div>
+                <div>Completed Runs: <strong style={{ color: "var(--bull-green)" }}>{schedulerStatus?.total_scheduled_runs || 0}</strong></div>
+              </div>
+              {isAdmin && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <button
+                    onClick={handleToggleScheduler}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: "0.75rem" }}
+                  >
+                    {schedulerStatus?.is_active ? <ToggleRight size={14} color="var(--bull-green)" /> : <ToggleLeft size={14} />}
+                    <span>{schedulerStatus?.is_active ? "Pause Auto-Scheduler" : "Activate Auto-Scheduler"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Target Portals Rate Limit Summary Card */}
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">
+                  <Server size={16} color="var(--ai-purple)" />
+                  <span>Configured Target Media Portals</span>
+                </div>
+                <span className="badge badge-ai">robots.txt Compliant</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+                {PORTALS.map((p) => (
+                  <div key={p.name} style={{ background: "var(--bg-input)", padding: "0.4rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}>
+                    <div style={{ fontWeight: "600", color: "var(--text-primary)" }}>{p.name}</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: "0.68rem" }}>Rate: {p.rateLimit} token bucket</div>
+                  </div>
+                ))}
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Crawl Control Console (Role-gated: Admin) */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            <Bot size={18} color="var(--blue-accent)" />
-            <span>Distributed Crawler Job Dispatcher</span>
-          </div>
-          <span className="badge badge-ai">Async Queue / Token Bucket</span>
-        </div>
-
-        <div style={{
-          display: "flex",
-          gap: "1rem",
-          alignItems: "center",
-          flexWrap: "wrap",
-          background: "var(--bg-input)",
-          padding: "1rem",
-          borderRadius: "10px",
-          border: "1px solid var(--border-color)"
-        }}>
-          <div>
-            <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-              Select Portal Target
-            </label>
-            <select
-              value={selectedPortal}
-              onChange={(e) => setSelectedPortal(e.target.value)}
-              className="select"
-              disabled={!isAdmin}
-            >
-              <option value="all">All Portals (Merolagani, ShareSansar, NepseAlpha, Bizmandu)</option>
-              <option value="merolagani.com">merolagani.com</option>
-              <option value="sharesansar.com">sharesansar.com</option>
-              <option value="nepsealpha.com">nepsealpha.com</option>
-              <option value="bizmandu.com">bizmandu.com</option>
-            </select>
           </div>
 
-          <div>
-            <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-              Crawl Ingestion Type
-            </label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="select"
-              disabled={!isAdmin}
-            >
-              <option value="NEWS">Financial News Articles</option>
-              <option value="OHLCV">30-Day OHLCV Price Bars</option>
-              <option value="FLOORSHEET">Floorsheet Transactions</option>
-            </select>
-          </div>
+          {/* Crawler Dispatcher Trigger Console */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <Bot size={18} color="var(--blue-accent)" />
+                <span>Distributed Ingestion Queue Dispatcher</span>
+              </div>
+              <span className="badge badge-ai">Async Queue (Redis / In-Memory Worker)</span>
+            </div>
 
-          <div style={{ alignSelf: "flex-end" }}>
-            <button
-              onClick={handleTriggerCrawl}
-              className={`btn-dispatch-crawl ${loading ? "dispatching" : ""} ${dispatchSuccess ? "dispatched-success" : ""}`}
-              disabled={!isAdmin || loading}
-              title={isAdmin ? "Initiate parallel distributed crawl run" : "Requires Admin role"}
-            >
-              {loading && <span className="dispatch-radar-ping" />}
+            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "180px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
+                  TARGET PORTAL
+                </label>
+                <select
+                  value={selectedPortal}
+                  onChange={(e) => setSelectedPortal(e.target.value)}
+                  className="select"
+                  disabled={!isAdmin}
+                >
+                  <option value="all">All Portals (Concurrent Distributed Queue)</option>
+                  {PORTALS.map((p) => (
+                    <option key={p.name} value={p.name}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
 
-              <div className="dispatch-btn-content">
+              <div style={{ flex: 1, minWidth: "160px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
+                  INGESTION STREAM
+                </label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="select"
+                  disabled={!isAdmin}
+                >
+                  <option value="NEWS">Financial News Articles</option>
+                  <option value="OHLCV">Daily OHLCV Telemetry</option>
+                  <option value="FLOORSHEET">Floorsheet Broker Transactions</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleTriggerCrawl}
+                disabled={!isAdmin || loading}
+                className="btn btn-primary"
+                style={{ padding: "0.55rem 1.25rem", height: "38px" }}
+              >
                 {loading ? (
                   <>
                     <RefreshCw size={15} className="spin-fast" />
-                    <span>Dispatching Crawlers...</span>
-                  </>
-                ) : dispatchSuccess ? (
-                  <>
-                    <CheckCircle2 size={16} />
-                    <span>Crawl Run Dispatched!</span>
+                    <span>Enqueuing Job...</span>
                   </>
                 ) : (
                   <>
                     <Play size={15} />
-                    <span>Dispatch Crawl Run</span>
+                    <span>Trigger Distributed Crawl Run</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* Live Execution Logs & Failure Inspector */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <Clock size={18} color="var(--vwap-cyan)" />
+                <span>Crawl Execution History &amp; Diagnostic Logs</span>
               </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Radar Scanner Beam when crawl is triggered */}
-        {activeScan && (
-          <div className="crawler-radar-scanner">
-            <div className="crawler-scanner-beam" />
-          </div>
-        )}
-
-        {/* Action Status Banner with auto-dismiss */}
-        {actionMsg && (
-          <div className={`action-msg-banner ${actionMsg.type}`}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-              {actionMsg.type === "error" ? (
-                <AlertTriangle size={16} />
-              ) : (
-                <CheckCircle2 size={16} />
-              )}
-              <span>{actionMsg.text}</span>
+              <button
+                onClick={fetchLogs}
+                disabled={isRefreshingLogs}
+                className="btn btn-secondary btn-sm"
+              >
+                <RefreshCw size={13} className={isRefreshingLogs ? "spin-fast" : ""} />
+                <span>Refresh Logs</span>
+              </button>
             </div>
-            <button
-              onClick={() => setActionMsg(null)}
-              className="action-msg-close"
-              title="Dismiss notice"
-            >
-              <X size={13} />
-            </button>
-          </div>
-        )}
-      </div>
 
-      {/* Crawl Run Logs & Failure Inspector */}
-      <div className="card" style={{ paddingBottom: 0 }}>
-        <div className="card-header" style={{ marginBottom: "0.85rem" }}>
-          <div className="card-title">
-            <Server size={18} color="var(--blue-accent)" />
-            <span>Crawl Monitoring &amp; Failure Log Inspector (Surfaced to UI)</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              {crawlLogs.length} Total Logs
-            </span>
-            <button 
-              onClick={fetchLogs} 
-              className="btn btn-secondary btn-sm"
-              disabled={isRefreshingLogs}
-              title="Reload recent crawl execution logs"
-            >
-              <RefreshCw size={12} className={isRefreshingLogs ? "spin-fast" : ""} />
-              <span>{isRefreshingLogs ? "Refreshing..." : "Refresh Logs"}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Filters & Search Toolbar */}
-        <div className="logs-toolbar">
-          <div className="logs-toolbar-left">
-            {/* Status Pills */}
-            <button
-              onClick={() => { setStatusFilter("ALL"); setLogPage(1); }}
-              className={`status-pill-btn ${statusFilter === "ALL" ? "active" : ""}`}
-            >
-              All ({crawlLogs.length})
-            </button>
-            <button
-              onClick={() => { setStatusFilter("SUCCESS"); setLogPage(1); }}
-              className={`status-pill-btn success ${statusFilter === "SUCCESS" ? "active" : ""}`}
-            >
-              <CheckCircle size={11} />
-              Success ({successCount})
-            </button>
-            <button
-              onClick={() => { setStatusFilter("FAILED"); setLogPage(1); }}
-              className={`status-pill-btn failed ${statusFilter === "FAILED" ? "active" : ""}`}
-            >
-              <XCircle size={11} />
-              Failed ({failedCount})
-            </button>
-
-            {/* Portal Filter Select */}
-            <select
-              value={filterPortal}
-              onChange={(e) => {
-                setFilterPortal(e.target.value);
-                setLogPage(1);
-              }}
-              className="select"
-              style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", height: "30px" }}
-              title="Filter by target portal"
-            >
-              <option value="all">All Portals</option>
-              <option value="merolagani.com">merolagani.com</option>
-              <option value="sharesansar.com">sharesansar.com</option>
-              <option value="nepsealpha.com">nepsealpha.com</option>
-              <option value="bizmandu.com">bizmandu.com</option>
-            </select>
-          </div>
-
-          <div className="logs-toolbar-right">
-            {/* Search Input */}
-            <div className="logs-search-wrapper">
-              <Search size={13} style={{ position: "absolute", left: "9px", color: "var(--text-muted)" }} />
-              <input
-                type="text"
-                placeholder="Search portal, type, error..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setLogPage(1);
-                }}
-                className="logs-search-input"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "7px",
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    display: "flex"
+            {/* Filter and Search Bar */}
+            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ flex: 1, minWidth: "220px", position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Search logs by portal, error, or status..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setLogPage(1);
                   }}
-                  title="Clear search"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+                  className="input"
+                  style={{ paddingLeft: "2rem", fontSize: "0.8rem", width: "100%" }}
+                />
+              </div>
 
-            {/* Clear All Filters Button */}
-            {(statusFilter !== "ALL" || filterPortal !== "all" || searchQuery) && (
-              <button
-                onClick={() => {
-                  setStatusFilter("ALL");
-                  setFilterPortal("all");
-                  setSearchQuery("");
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
                   setLogPage(1);
                 }}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: "0.72rem", padding: "0.25rem 0.5rem" }}
-                title="Reset all active filters"
+                className="select"
+                style={{ width: "130px", fontSize: "0.8rem" }}
               >
-                Reset Filters
-              </button>
-            )}
-          </div>
-        </div>
-
-        {crawlLogs.length === 0 ? (
-          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", padding: "1.5rem", textAlign: "center" }}>
-            No crawl execution logs available or insufficient permission.
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", padding: "2rem", textAlign: "center" }}>
-            No crawl logs match the selected filters or search query.
-            <div style={{ marginTop: "0.5rem" }}>
-              <button
-                onClick={() => {
-                  setStatusFilter("ALL");
-                  setFilterPortal("all");
-                  setSearchQuery("");
-                }}
-                className="btn btn-secondary btn-sm"
-              >
-                Clear Filters
-              </button>
+                <option value="ALL">All Status</option>
+                <option value="SUCCESS">SUCCESS</option>
+                <option value="FAILED">FAILED</option>
+                <option value="RUNNING">RUNNING</option>
+              </select>
             </div>
-          </div>
-        ) : (
-          <>
+
+            {/* Logs Table */}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                    <th 
-                      onClick={() => handleSort("portal")} 
-                      className="th-sortable" 
-                      style={{ padding: "0.6rem 0.8rem" }}
-                      title="Click to sort by Portal"
-                    >
-                      Portal {renderSortIndicator("portal")}
-                    </th>
-                    <th 
-                      onClick={() => handleSort("crawl_type")} 
-                      className="th-sortable" 
-                      style={{ padding: "0.6rem 0.8rem" }}
-                      title="Click to sort by Ingestion Type"
-                    >
-                      Type {renderSortIndicator("crawl_type")}
-                    </th>
-                    <th 
-                      onClick={() => handleSort("status")} 
-                      className="th-sortable" 
-                      style={{ padding: "0.6rem 0.8rem" }}
-                      title="Click to sort by Status"
-                    >
-                      Status {renderSortIndicator("status")}
-                    </th>
-                    <th 
-                      onClick={() => handleSort("items_crawled")} 
-                      className="th-sortable" 
-                      style={{ padding: "0.6rem 0.8rem" }}
-                      title="Click to sort by Items Crawled"
-                    >
-                      Items Crawled {renderSortIndicator("items_crawled")}
-                    </th>
-                    <th 
-                      onClick={() => handleSort("started_at")} 
-                      className="th-sortable" 
-                      style={{ padding: "0.6rem 0.8rem" }}
-                      title="Click to sort by Started At"
-                    >
-                      Started At {renderSortIndicator("started_at")}
-                    </th>
-                    <th style={{ padding: "0.6rem 0.8rem" }}>Failure / Error Message</th>
+                    <th style={{ padding: "0.6rem" }}>Timestamp</th>
+                    <th style={{ padding: "0.6rem" }}>Target Portal</th>
+                    <th style={{ padding: "0.6rem" }}>Type</th>
+                    <th style={{ padding: "0.6rem" }}>Status</th>
+                    <th style={{ padding: "0.6rem" }}>Items</th>
+                    <th style={{ padding: "0.6rem" }}>Diagnostic Trace / Error</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedLogs.map((log) => {
-                    const isSuccess = log.status === "SUCCESS";
-                    const isFailed = log.status === "FAILED";
-                    return (
-                      <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                        <td style={{ padding: "0.6rem 0.8rem", fontWeight: "600", color: "var(--text-primary)" }}>
-                          {log.portal}
-                        </td>
-                        <td style={{ padding: "0.6rem 0.8rem" }}>
-                          <span style={{ 
-                            fontSize: "0.72rem", 
-                            fontWeight: "600",
-                            padding: "0.15rem 0.45rem", 
-                            borderRadius: "4px", 
-                            background: "var(--bg-input)", 
-                            border: "1px solid var(--border-color)" 
-                          }}>
-                            {log.crawl_type}
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.6rem 0.8rem" }}>
-                          <span
-                            className={`badge ${isSuccess ? "badge-bull" : isFailed ? "badge-bear" : "badge-vwap"}`}
-                            style={{ fontSize: "0.72rem" }}
-                          >
-                            {isSuccess && <CheckCircle size={10} />}
-                            {isFailed && <XCircle size={10} />}
-                            {log.status}
-                          </span>
-                        </td>
-                        <td className="font-mono" style={{ padding: "0.6rem 0.8rem", fontWeight: "600" }}>
-                          {log.items_crawled}
-                        </td>
-                        <td className="font-mono" style={{ padding: "0.6rem 0.8rem", color: "var(--text-muted)" }}>
-                          {new Date(log.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </td>
-                        <td style={{ padding: "0.6rem 0.8rem", color: isFailed ? "var(--bear-red)" : "var(--text-muted)", maxWidth: "340px" }}>
-                          {log.error_message ? (
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                              <span style={{ 
-                                overflow: "hidden", 
-                                textOverflow: "ellipsis", 
-                                whiteSpace: "nowrap", 
-                                maxWidth: "240px",
-                                fontSize: "0.75rem"
-                              }}>
-                                {log.error_message}
-                              </span>
-                              <button
-                                onClick={() => setSelectedError(log)}
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: "0.15rem 0.45rem", fontSize: "0.68rem" }}
-                                title="Inspect failure traceback details"
-                              >
-                                <Eye size={11} />
-                                <span>Inspect</span>
-                              </button>
-                            </div>
-                          ) : (
-                            "— No errors reported —"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {pagedLogs.map((log) => (
+                    <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
+                        {new Date(log.started_at).toLocaleTimeString()}
+                      </td>
+                      <td style={{ padding: "0.6rem", fontWeight: "600" }}>{log.portal}</td>
+                      <td style={{ padding: "0.6rem" }}>{log.crawl_type}</td>
+                      <td style={{ padding: "0.6rem" }}>
+                        <span className={`badge ${log.status === "SUCCESS" ? "badge-bull" : log.status === "FAILED" ? "badge-bear" : "badge-secondary"}`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="font-mono" style={{ padding: "0.6rem" }}>{log.items_crawled}</td>
+                      <td style={{ padding: "0.6rem" }}>
+                        {log.error_message ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <span style={{ color: "var(--bear-red)", fontSize: "0.75rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {log.error_message}
+                            </span>
+                            <button
+                              onClick={() => setSelectedError(log)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}
+                            >
+                              <Eye size={11} /> Inspect
+                            </button>
+                          </div>
+                        ) : "— Clean —"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination Component */}
             <Pagination
               currentPage={logPage}
               totalItems={sortedLogs.length}
@@ -634,71 +712,468 @@ export const AdminOpsCenter = () => {
               }}
               itemLabel="logs"
             />
-          </>
-        )}
-      </div>
-
-      {/* Role Governance & Users Roster */}
-      {isAdmin && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              <Users size={18} color="var(--ai-purple)" />
-              <span>RBAC User Governance &amp; Permissions Roster</span>
-            </div>
-            <span className="badge badge-ai">Server-Side Enforced</span>
-          </div>
-
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                  <th style={{ padding: "0.6rem" }}>User Name</th>
-                  <th style={{ padding: "0.6rem" }}>Email Account</th>
-                  <th style={{ padding: "0.6rem" }}>Role</th>
-                  <th style={{ padding: "0.6rem" }}>Permissions Granted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userList.map((u) => (
-                  <tr key={u.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                    <td style={{ padding: "0.6rem", fontWeight: "600", color: "var(--text-primary)" }}>{u.full_name}</td>
-                    <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{u.email}</td>
-                    <td style={{ padding: "0.6rem" }}>
-                      <span className={`badge ${u.role === "Admin" ? "badge-ai" : u.role === "Analyst" ? "badge-vwap" : "badge-secondary"}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td style={{ padding: "0.6rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                      {u.role === "Admin"
-                        ? "Manage watchlist, trigger/monitor crawl runs, manage users"
-                        : u.role === "Analyst"
-                        ? "View all data, correct news categorization, export reports"
-                        : "Read-only dashboards and behavior reports"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
 
-      {/* Failure Diagnostic Inspector Modal */}
+      {/* ============================================================== */}
+      {/* SUB-TAB 2: WATCHLIST CONFIGURATION & MANAGEMENT (ADMIN)        */}
+      {/* ============================================================== */}
+      {subTab === "watchlist" && isAdmin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <Database size={18} color="var(--blue-accent)" />
+                <span>Tracked NEPSE Companies Watchlist</span>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={handleSyncConfig}
+                  disabled={isSyncingConfig}
+                  className="btn btn-secondary btn-sm"
+                  title="Sync with companies.json file"
+                >
+                  <RefreshCw size={13} className={isSyncingConfig ? "spin-fast" : ""} />
+                  <span>Sync with companies.json</span>
+                </button>
+                <button
+                  onClick={() => setShowAddCompanyModal(true)}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Plus size={14} />
+                  <span>Add Company</span>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
+                    <th style={{ padding: "0.6rem" }}>Symbol</th>
+                    <th style={{ padding: "0.6rem" }}>Company Name</th>
+                    <th style={{ padding: "0.6rem" }}>Sector</th>
+                    <th style={{ padding: "0.6rem" }}>Aliases / Keywords</th>
+                    <th style={{ padding: "0.6rem" }}>Status</th>
+                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {companies.map((c) => (
+                    <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td className="font-mono" style={{ padding: "0.6rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                        {c.symbol}
+                      </td>
+                      <td style={{ padding: "0.6rem", fontWeight: "500" }}>{c.name}</td>
+                      <td style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{c.sector}</td>
+                      <td style={{ padding: "0.6rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                        {c.aliases || "—"}
+                      </td>
+                      <td style={{ padding: "0.6rem" }}>
+                        <span className={`badge ${c.is_active ? "badge-bull" : "badge-secondary"}`}>
+                          {c.is_active ? "ACTIVE" : "INACTIVE"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.6rem", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                          <button
+                            onClick={() => handleToggleCompanyActive(c.id, c.is_active)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}
+                            title="Toggle active status"
+                          >
+                            {c.is_active ? "Deactivate" : "Activate"}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCompany(c.id, c.symbol)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "0.2rem 0.4rem", color: "var(--bear-red)" }}
+                            title="Remove company"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* SUB-TAB 3: USER GOVERNANCE & ACCESS CONTROL (ADMIN)           */}
+      {/* ============================================================== */}
+      {subTab === "users" && isAdmin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <Users size={18} color="var(--ai-purple)" />
+                <span>RBAC User Accounts &amp; Permissions</span>
+              </div>
+              <button
+                onClick={() => setShowAddUserModal(true)}
+                className="btn btn-primary btn-sm"
+              >
+                <Plus size={14} />
+                <span>Create User</span>
+              </button>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
+                    <th style={{ padding: "0.6rem" }}>Full Name</th>
+                    <th style={{ padding: "0.6rem" }}>Email</th>
+                    <th style={{ padding: "0.6rem" }}>Assigned Role</th>
+                    <th style={{ padding: "0.6rem" }}>Role Change</th>
+                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userList.map((u) => (
+                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td style={{ padding: "0.6rem", fontWeight: "600" }}>{u.full_name}</td>
+                      <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>{u.email}</td>
+                      <td style={{ padding: "0.6rem" }}>
+                        <span className={`badge ${u.role === "Admin" ? "badge-ai" : u.role === "Analyst" ? "badge-vwap" : "badge-secondary"}`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.6rem" }}>
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          className="select"
+                          style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", width: "120px" }}
+                        >
+                          <option value="Admin">Admin</option>
+                          <option value="Analyst">Analyst</option>
+                          <option value="Viewer">Viewer</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: "0.6rem", textAlign: "right" }}>
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          disabled={u.id === user?.id}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: "0.2rem 0.4rem", color: "var(--bear-red)" }}
+                          title={u.id === user?.id ? "Cannot delete self" : "Delete user"}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* SUB-TAB 4: NEWS-CATEGORY CORRECTIONS & RETRAINING (ANALYST/ADMIN)*/}
+      {/* ============================================================== */}
+      {subTab === "corrections" && isAnalystOrAdmin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <Tag size={18} color="var(--bull-green)" />
+                <span>Audited Categorization Corrections &amp; AI Fine-Tuning Corpus</span>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => api.exportRetrainingDataset("json")}
+                  className="btn btn-secondary btn-sm"
+                  title="Export training corpus as structured JSON"
+                >
+                  <Download size={13} />
+                  <span>Export JSON Dataset</span>
+                </button>
+                <button
+                  onClick={() => api.exportRetrainingDataset("csv")}
+                  className="btn btn-secondary btn-sm"
+                  title="Export training corpus as tabular CSV"
+                >
+                  <Download size={13} />
+                  <span>Export CSV Dataset</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Search */}
+            <div style={{ marginBottom: "0.75rem" }}>
+              <input
+                type="text"
+                placeholder="Filter corrections by symbol, headline, or analyst..."
+                value={corrSearch}
+                onChange={(e) => {
+                  setCorrSearch(e.target.value);
+                  setCorrPage(1);
+                }}
+                className="input"
+                style={{ width: "100%", fontSize: "0.8rem" }}
+              />
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
+                    <th style={{ padding: "0.6rem" }}>Timestamp</th>
+                    <th style={{ padding: "0.6rem" }}>Company</th>
+                    <th style={{ padding: "0.6rem" }}>Article Headline</th>
+                    <th style={{ padding: "0.6rem" }}>Action</th>
+                    <th style={{ padding: "0.6rem" }}>Prev &rarr; New Conf</th>
+                    <th style={{ padding: "0.6rem" }}>Analyst</th>
+                    <th style={{ padding: "0.6rem" }}>Audit Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedCorrections.map((c) => (
+                    <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
+                        {new Date(c.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="font-mono" style={{ padding: "0.6rem", fontWeight: "700", color: "var(--blue-accent)" }}>
+                        {c.company_symbol}
+                      </td>
+                      <td style={{ padding: "0.6rem", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {c.article_headline}
+                      </td>
+                      <td style={{ padding: "0.6rem" }}>
+                        <span className="badge badge-ai" style={{ fontSize: "0.7rem" }}>
+                          {c.action}
+                        </span>
+                      </td>
+                      <td className="font-mono" style={{ padding: "0.6rem" }}>
+                        {c.previous_confidence ?? "—"} &rarr; {c.new_confidence ?? "—"}
+                      </td>
+                      <td style={{ padding: "0.6rem", color: "var(--text-secondary)" }}>
+                        {c.user_email}
+                      </td>
+                      <td style={{ padding: "0.6rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                        {c.notes || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={corrPage}
+              totalItems={filteredCorrections.length}
+              pageSize={corrPageSize}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onPageChange={(p) => setCorrPage(p)}
+              onPageSizeChange={(s) => {
+                setCorrPageSize(s);
+                setCorrPage(1);
+              }}
+              itemLabel="corrections"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: ADD COMPANY TO WATCHLIST (ADMIN)                        */}
+      {/* ============================================================== */}
+      {showAddCompanyModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
+        }}>
+          <div className="card" style={{ maxWidth: "480px", width: "100%" }}>
+            <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
+              <div className="card-title">
+                <Plus size={18} color="var(--blue-accent)" />
+                <span>Add Tracked Company to Watchlist</span>
+              </div>
+              <button onClick={() => setShowAddCompanyModal(false)} className="action-msg-close">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleAddCompany} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  TICKER SYMBOL (e.g. HBL)
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="HBL"
+                  value={newCompany.symbol}
+                  onChange={(e) => setNewCompany({ ...newCompany, symbol: e.target.value.toUpperCase() })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  OFFICIAL COMPANY NAME
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Himalayan Bank Limited"
+                  value={newCompany.name}
+                  onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  SECTOR
+                </label>
+                <select
+                  value={newCompany.sector}
+                  onChange={(e) => setNewCompany({ ...newCompany, sector: e.target.value })}
+                  className="select"
+                  style={{ width: "100%" }}
+                >
+                  <option value="Commercial Banks">Commercial Banks</option>
+                  <option value="Manufacturing and Processing">Manufacturing and Processing</option>
+                  <option value="Hydro Power">Hydro Power</option>
+                  <option value="Investment">Investment</option>
+                  <option value="Development Banks">Development Banks</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  ALIASES / SEARCH KEYWORDS (comma separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Himalayan Bank, HBL"
+                  value={newCompany.aliases}
+                  onChange={(e) => setNewCompany({ ...newCompany, aliases: e.target.value })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button type="button" onClick={() => setShowAddCompanyModal(false)} className="btn btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Provision Company &amp; Telemetry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: CREATE USER (ADMIN)                                    */}
+      {/* ============================================================== */}
+      {showAddUserModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
+        }}>
+          <div className="card" style={{ maxWidth: "440px", width: "100%" }}>
+            <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
+              <div className="card-title">
+                <Users size={18} color="var(--ai-purple)" />
+                <span>Create System User Account</span>
+              </div>
+              <button onClick={() => setShowAddUserModal(false)} className="action-msg-close">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  FULL NAME
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. John Doe"
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  EMAIL ACCOUNT
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@omway.com"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  INITIAL PASSWORD
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="******"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="input"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                  RBAC ROLE
+                </label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="select"
+                  style={{ width: "100%" }}
+                >
+                  <option value="Admin">Admin (Full Control, Watchlist, Users, Crawlers)</option>
+                  <option value="Analyst">Analyst (All Data, News Recategorize, Report Export)</option>
+                  <option value="Viewer">Viewer (Read-Only Dashboards)</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button type="button" onClick={() => setShowAddUserModal(false)} className="btn btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: FAILURE DIAGNOSTIC TRACEBACK INSPECTOR                 */}
+      {/* ============================================================== */}
       {selectedError && (
         <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 100,
-          padding: "1rem"
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0, 0, 0, 0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem"
         }}>
           <div className="card" style={{ maxWidth: "640px", width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
             <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
@@ -706,11 +1181,7 @@ export const AdminOpsCenter = () => {
                 <FileWarning size={18} />
                 <span>Crawler Failure Diagnostic Traceback</span>
               </div>
-              <button
-                onClick={() => setSelectedError(null)}
-                className="action-msg-close"
-                title="Close inspector"
-              >
+              <button onClick={() => setSelectedError(null)} className="action-msg-close">
                 <X size={16} />
               </button>
             </div>
@@ -766,10 +1237,7 @@ export const AdminOpsCenter = () => {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setSelectedError(null)}
-                className="btn btn-secondary"
-              >
+              <button onClick={() => setSelectedError(null)} className="btn btn-secondary">
                 Dismiss Inspector
               </button>
             </div>

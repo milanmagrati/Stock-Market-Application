@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -33,8 +33,6 @@ class Settings(BaseSettings):
     # Configuration paths
     COMPANIES_CONFIG_PATH: Path = BASE_DIR / "config" / "companies.json"
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
 settings = Settings()

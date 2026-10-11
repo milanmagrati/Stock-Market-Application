@@ -9,10 +9,12 @@ import {
   Layers, 
   UserCheck,
   Sun,
-  Moon
+  Moon,
+  Download,
+  Lock
 } from "lucide-react";
 
-export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleTheme }) => {
+export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleTheme, onOpenExportModal }) => {
   const { user, switchRole } = useAuth();
 
   return (
@@ -108,6 +110,22 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
               {wsConnected ? "WS LIVE" : "CONNECTING"}
             </span>
           </div>
+
+          {/* Institutional Report Export Action */}
+          <button
+            onClick={onOpenExportModal}
+            className="btn btn-secondary btn-sm"
+            style={{
+              borderColor: user?.role === "Viewer" ? "rgba(245, 158, 11, 0.4)" : "rgba(59, 130, 246, 0.4)",
+              fontSize: "0.75rem",
+              padding: "0.35rem 0.65rem",
+              gap: "0.35rem"
+            }}
+            title={user?.role === "Viewer" ? "Viewer: Read-only dashboards (Click to see RBAC details)" : "Export Quantitative Market Report (CSV / JSON)"}
+          >
+            {user?.role === "Viewer" ? <Lock size={13} color="var(--anomaly-amber)" /> : <Download size={13} color="var(--blue-accent)" />}
+            <span>Export Report</span>
+          </button>
 
           {/* RBAC Role Switcher */}
           <div style={{

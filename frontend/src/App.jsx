@@ -10,6 +10,7 @@ import { NewsFeed } from "./components/NewsFeed";
 import { CrossCompanyMatrix } from "./components/CrossCompanyMatrix";
 import { AdminOpsCenter } from "./components/AdminOpsCenter";
 import { LiveAlertToast } from "./components/LiveAlertToast";
+import { ReportExportModal } from "./components/ReportExportModal";
 import { RefreshCw, Filter } from "lucide-react";
 
 function DashboardContent() {
@@ -23,6 +24,7 @@ function DashboardContent() {
   const [behaviorData, setBehaviorData] = useState(null);
   const [news, setNews] = useState([]);
   const [comparisonData, setComparisonData] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // WebSocket state & alerts
   const [wsConnected, setWsConnected] = useState(false);
@@ -201,6 +203,7 @@ function DashboardContent() {
         wsConnected={wsConnected}
         theme={theme}
         toggleTheme={toggleTheme}
+        onOpenExportModal={() => setShowExportModal(true)}
       />
 
       {/* Ticker Bar */}
@@ -334,7 +337,10 @@ function DashboardContent() {
 
             {/* Behavioral Summary: VWAP, Pressure Index, Anomalies, Section 3 Findings */}
             <div key={`behavior-${pulseKey}`} className={pulseKey > 0 ? "telemetry-pulse" : ""}>
-              <BehaviorSummaryPanel behaviorData={behaviorData} />
+              <BehaviorSummaryPanel 
+                behaviorData={behaviorData} 
+                onOpenExport={() => setShowExportModal(true)} 
+              />
             </div>
 
             {/* Grid 2 Columns: Floorsheet Concentration & Categorized News Feed */}
@@ -367,6 +373,14 @@ function DashboardContent() {
 
       {/* Real-time Alerts Toast */}
       <LiveAlertToast alerts={alerts} onDismiss={dismissAlert} />
+
+      {/* Institutional Report Export Modal */}
+      <ReportExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        companies={companies}
+        selectedCompany={selectedCompany}
+      />
     </div>
   );
 }

@@ -131,4 +131,224 @@ export const api = {
     if (!res.ok) throw new Error("Failed to load user roster");
     return res.json();
   },
+
+  createUser: async ({ email, full_name, password, role }) => {
+    const res = await fetch(`${API_BASE}/api/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ email, full_name, password, role }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to create user");
+    }
+    return res.json();
+  },
+
+  updateUserRole: async (userId, role) => {
+    const res = await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to update user role");
+    }
+    return res.json();
+  },
+
+  deleteUser: async (userId) => {
+    const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to delete user");
+    }
+    return res.json();
+  },
+
+  // Watchlist Management
+  addCompany: async ({ symbol, name, sector, aliases }) => {
+    const res = await fetch(`${API_BASE}/api/companies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ symbol, name, sector, aliases, is_active: true }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to add company to watchlist");
+    }
+    return res.json();
+  },
+
+  updateCompany: async (companyId, updateData) => {
+    const res = await fetch(`${API_BASE}/api/companies/${companyId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(updateData),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to update company");
+    }
+    return res.json();
+  },
+
+  toggleCompanyActive: async (companyId) => {
+    const res = await fetch(`${API_BASE}/api/companies/${companyId}/toggle-active`, {
+      method: "PATCH",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to toggle company status");
+    }
+    return res.json();
+  },
+
+  deleteCompany: async (companyId) => {
+    const res = await fetch(`${API_BASE}/api/companies/${companyId}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to delete company from watchlist");
+    }
+    return res.json();
+  },
+
+  syncCompanyConfig: async () => {
+    const res = await fetch(`${API_BASE}/api/companies/sync-config`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to sync config");
+    }
+    return res.json();
+  },
+
+  // Institutional Report Export (Role-gated: Analyst / Admin)
+  exportReport: async (companyId = null, format = "csv") => {
+    let url = `${API_BASE}/api/reports/export?format=${format}`;
+    if (companyId) {
+      url += `&company_id=${companyId}`;
+    }
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Export failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `nepse_market_report_${Date.now()}.${format}`;
+    if (disposition && disposition.includes("filename=")) {
+      filename = disposition.split("filename=")[1].replace(/["']/g, "").trim();
+    }
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    return { success: true, filename };
+  },
+
+  // Retraining Corrections & Dataset Export
+  getNewsCorrections: async (limit = 100) => {
+    const res = await fetch(`${API_BASE}/api/news/corrections?limit=${limit}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to load corrections");
+    }
+    return res.json();
+  },
+
+  exportRetrainingDataset: async (format = "json") => {
+    const res = await fetch(`${API_BASE}/api/news/corrections/export?format=${format}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to export dataset");
+    }
+    const blob = await res.blob();
+    const filename = `nepse_news_retraining_dataset.${format}`;
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    return { success: true, filename };
+  },
+
+  // Unattended Scheduler Controls
+  getSchedulerStatus: async () => {
+    const res = await fetch(`${API_BASE}/api/admin/scheduler`, {
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to get scheduler status");
+    }
+    return res.json();
+  },
+
+  toggleScheduler: async (enabled) => {
+    const res = await fetch(`${API_BASE}/api/admin/scheduler/toggle`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ enabled }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to toggle scheduler");
+    }
+    return res.json();
+  },
+
+  updateSchedulerInterval: async (intervalMinutes) => {
+    const res = await fetch(`${API_BASE}/api/admin/scheduler/interval`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ interval_minutes: intervalMinutes }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to update interval");
+    }
+    return res.json();
+  },
 };

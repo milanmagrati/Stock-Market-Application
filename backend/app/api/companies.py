@@ -7,20 +7,25 @@ from app.database import get_db
 from app.models.company import Company
 from app.models.market_data import OHLCV
 from app.models.user import User, UserRole
-from app.schemas.company import CompanyOut, CompanyCreate
+from app.schemas.company import CompanyOut, CompanyCreate, CompanyUpdate
 from app.schemas.market_data import OHLCVOut
 from app.api.deps import require_role
+from app.ml.seed_data import seed_single_company_telemetry, sync_companies_from_config
 
 companies_router = APIRouter(prefix="/api/companies", tags=["Companies & Market Data"])
 
 @companies_router.get("", response_model=List[CompanyOut])
 async def get_companies(
+    include_inactive: bool = Query(False, description="Include inactive companies (for Admin)"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Returns the watchlist of tracked NEPSE companies.
     """
-    query = select(Company).where(Company.is_active == True).order_by(Company.symbol)
+    query = select(Company)
+    if not include_inactive:
+        query = query.where(Company.is_active == True)
+    query = query.order_by(Company.symbol)
     result = await db.execute(query)
     companies = result.scalars().all()
     return companies
@@ -57,22 +62,114 @@ async def create_company(
 ):
     """
     Add a new company to the watchlist (Role-gated: Admin).
+    Automatically provisions 30-day baseline OHLCV & floorsheets without manual babysitting.
     """
-    existing = await db.execute(select(Company).where(Company.symbol == company_in.symbol.upper()))
+    sym = company_in.symbol.upper()
+    existing = await db.execute(select(Company).where(Company.symbol == sym))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Company symbol already exists")
+        raise HTTPException(status_code=400, detail=f"Company symbol '{sym}' already exists")
 
     new_company = Company(
-        symbol=company_in.symbol.upper(),
+        symbol=sym,
         name=company_in.name,
         sector=company_in.sector,
         aliases=company_in.aliases,
         is_active=company_in.is_active
     )
     db.add(new_company)
+    await db.flush()
+
+    # Automatically provision 30-day baseline telemetry
+    await seed_single_company_telemetry(db, new_company)
     await db.commit()
     await db.refresh(new_company)
     return new_company
+
+@companies_router.put("/{company_id}", response_model=CompanyOut)
+async def update_company(
+    company_id: int,
+    company_in: CompanyUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """
+    Update watchlist company metadata (Role-gated: Admin).
+    """
+    comp_query = select(Company).where(Company.id == company_id)
+    comp_res = await db.execute(comp_query)
+    company = comp_res.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    if company_in.name is not None:
+        company.name = company_in.name
+    if company_in.sector is not None:
+        company.sector = company_in.sector
+    if company_in.aliases is not None:
+        company.aliases = company_in.aliases
+    if company_in.is_active is not None:
+        company.is_active = company_in.is_active
+
+    await db.commit()
+    await db.refresh(company)
+    return company
+
+@companies_router.patch("/{company_id}/toggle-active", response_model=CompanyOut)
+async def toggle_company_active(
+    company_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """
+    Toggle watchlist company active/inactive status (Role-gated: Admin).
+    """
+    comp_query = select(Company).where(Company.id == company_id)
+    comp_res = await db.execute(comp_query)
+    company = comp_res.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    company.is_active = not company.is_active
+    await db.commit()
+    await db.refresh(company)
+    return company
+
+@companies_router.delete("/{company_id}")
+async def delete_company(
+    company_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """
+    Remove a company from the watchlist (Role-gated: Admin).
+    """
+    comp_query = select(Company).where(Company.id == company_id)
+    comp_res = await db.execute(comp_query)
+    company = comp_res.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    sym = company.symbol
+    await db.delete(company)
+    await db.commit()
+    return {"success": True, "message": f"Company '{sym}' removed from watchlist"}
+
+@companies_router.post("/sync-config")
+async def sync_watchlist_config(
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """
+    Sync watchlist directly with config/companies.json (Role-gated: Admin).
+    Provisions any newly specified companies and generates their 30-day telemetry.
+    """
+    newly_added = await sync_companies_from_config(db)
+    return {
+        "success": True,
+        "newly_added": newly_added,
+        "count": len(newly_added),
+        "message": f"Synced with companies.json. {len(newly_added)} new company(ies) provisioned."
+    }
 
 @companies_router.post("/{company_id}/refresh-telemetry")
 async def refresh_company_telemetry(

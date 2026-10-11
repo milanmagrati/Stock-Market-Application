@@ -20,6 +20,7 @@ from app.ml.direction_classifier import price_classifier
 behavior_router = APIRouter(tags=["Market Behavior & Analytics"])
 
 @behavior_router.get("/api/companies/{company_id}/behavior-summary", response_model=BehaviorSummaryOut)
+@behavior_router.get("/api/companies/{company_id}/behavior_summary", response_model=BehaviorSummaryOut, include_in_schema=False)
 async def get_company_behavior_summary(
     company_id: int,
     db: AsyncSession = Depends(get_db)

@@ -1,8 +1,10 @@
 from datetime import date as dt_date, datetime as dt_datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class OHLCVOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     company_id: int
     date: dt_date
@@ -14,10 +16,9 @@ class OHLCVOut(BaseModel):
     vwap: Optional[float] = None
     turnover: Optional[float] = None
 
-    class Config:
-        from_attributes = True
-
 class FloorsheetOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     company_id: int
     date: dt_date
@@ -27,9 +28,6 @@ class FloorsheetOut(BaseModel):
     quantity: int
     rate: float
     amount: float
-
-    class Config:
-        from_attributes = True
 
 class BrokerBreakdownItem(BaseModel):
     broker: str

@@ -15,6 +15,7 @@ from app.api.companies import companies_router
 from app.api.news import news_router
 from app.api.behavior import behavior_router
 from app.api.admin import admin_router
+from app.api.reports import reports_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,6 +100,7 @@ app.include_router(companies_router)
 app.include_router(news_router)
 app.include_router(behavior_router)
 app.include_router(admin_router)
+app.include_router(reports_router)
 app.include_router(ws_router)
 
 @app.get("/api/health", tags=["Health"])
