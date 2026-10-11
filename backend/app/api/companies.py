@@ -73,3 +73,71 @@ async def create_company(
     await db.commit()
     await db.refresh(new_company)
     return new_company
+
+@companies_router.post("/{company_id}/refresh-telemetry")
+async def refresh_company_telemetry(
+    company_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simulates real-time market pulse / tick update:
+    Updates latest OHLCV bar with live tick movement, increments volume,
+    recalculates VWAP, and pushes an event over WebSocket.
+    """
+    import random
+    from datetime import datetime
+    from app.api.websocket import ws_manager
+
+    comp_query = select(Company).where(Company.id == company_id)
+    comp_res = await db.execute(comp_query)
+    company = comp_res.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    query = (
+        select(OHLCV)
+        .where(OHLCV.company_id == company_id)
+        .order_by(OHLCV.date.desc())
+    )
+    result = await db.execute(query)
+    latest_rec = result.scalars().first()
+    if not latest_rec:
+        raise HTTPException(status_code=404, detail="No price record to refresh")
+
+    # Realistic micro tick fluctuation
+    delta_factor = random.choice([-0.006, -0.003, 0.002, 0.004, 0.007])
+    new_close = round(latest_rec.close * (1 + delta_factor), 1)
+    if new_close > latest_rec.high:
+        latest_rec.high = new_close
+    if new_close < latest_rec.low:
+        latest_rec.low = new_close
+    latest_rec.close = new_close
+    added_volume = random.randint(1500, 4200)
+    latest_rec.volume += added_volume
+    typical_price = (latest_rec.high + latest_rec.low + latest_rec.close) / 3.0
+    latest_rec.turnover = round(latest_rec.volume * typical_price, 2)
+    latest_rec.vwap = round(typical_price * (1 + random.uniform(-0.003, 0.003)), 2)
+
+    await db.commit()
+    await db.refresh(latest_rec)
+
+    # Broadcast live market update over WebSocket
+    await ws_manager.broadcast({
+        "type": "TELEMETRY_REFRESHED",
+        "company_id": company.id,
+        "symbol": company.symbol,
+        "close": latest_rec.close,
+        "volume": latest_rec.volume,
+        "vwap": latest_rec.vwap,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+    return {
+        "success": True,
+        "symbol": company.symbol,
+        "new_close": latest_rec.close,
+        "new_volume": latest_rec.volume,
+        "new_vwap": latest_rec.vwap,
+        "delta_pct": round(delta_factor * 100, 2)
+    }
+

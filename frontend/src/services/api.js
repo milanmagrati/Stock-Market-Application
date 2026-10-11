@@ -41,6 +41,15 @@ export const api = {
     return res.json();
   },
 
+  refreshTelemetry: async (companyId) => {
+    const res = await fetch(`${API_BASE}/api/companies/${companyId}/refresh-telemetry`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    if (!res.ok) throw new Error("Failed to refresh telemetry");
+    return res.json();
+  },
+
   // Behavior & Analytics
   getBehaviorSummary: async (companyId) => {
     const res = await fetch(`${API_BASE}/api/companies/${companyId}/behavior-summary`);
