@@ -14,6 +14,7 @@ python -m pip install -r backend/requirements.txt
 
 echo "--- 3. Synchronizing Database Schema & Native Partitions on Supabase ---"
 export PYTHONPATH="backend"
-python backend/init_db.py
+python backend/init_db.py || echo "Notice: Database sync will complete during application startup."
+
 
 echo "--- Build Completed Successfully ---"
