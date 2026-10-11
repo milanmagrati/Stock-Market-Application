@@ -34,18 +34,21 @@ async def trigger_crawl_run(
 
 @admin_router.get("/crawl-logs", response_model=List[CrawlLogOut])
 async def get_crawl_logs(
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(100, ge=1, le=200),
     status_filter: Optional[str] = Query(None, description="Filter by SUCCESS, FAILED, RUNNING"),
+    portal: Optional[str] = Query(None, description="Filter by portal name"),
     db: AsyncSession = Depends(get_db),
     analyst_user: User = Depends(require_role(UserRole.ANALYST))
 ):
     """
     Returns crawl execution history and failure logs (Role-gated: Analyst / Admin).
-    Surfaces crawl failures directly to the UI.
+    Surfaces crawl failures directly to the UI with optional filtering by status and portal.
     """
     query = select(CrawlLog).order_by(desc(CrawlLog.started_at)).limit(limit)
-    if status_filter:
+    if status_filter and status_filter.upper() != "ALL":
         query = query.where(CrawlLog.status == status_filter.upper())
+    if portal and portal.lower() != "all":
+        query = query.where(CrawlLog.portal == portal)
 
     result = await db.execute(query)
     logs = result.scalars().all()

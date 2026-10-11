@@ -106,8 +106,15 @@ export const api = {
     return res.json();
   },
 
-  getCrawlLogs: async (limit = 30) => {
-    const res = await fetch(`${API_BASE}/api/admin/crawl-logs?limit=${limit}`, {
+  getCrawlLogs: async (limit = 100, status_filter = null, portal = null) => {
+    let url = `${API_BASE}/api/admin/crawl-logs?limit=${limit}`;
+    if (status_filter && status_filter !== "ALL") {
+      url += `&status_filter=${encodeURIComponent(status_filter)}`;
+    }
+    if (portal && portal !== "all") {
+      url += `&portal=${encodeURIComponent(portal)}`;
+    }
+    const res = await fetch(url, {
       headers: { ...getAuthHeaders() },
     });
     if (!res.ok) {

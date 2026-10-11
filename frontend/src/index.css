@@ -725,3 +725,250 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ==========================================================================
+   Modern Functional Pagination & Table Filter Toolbar Styles
+   ========================================================================== */
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px;
+  font-size: 0.8rem;
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.pagination-size-select {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.pagination-size-select select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.pagination-size-select select:hover,
+.pagination-size-select select:focus {
+  border-color: var(--blue-accent);
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 0.45rem;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--blue-accent);
+  transform: translateY(-1px);
+}
+
+.pagination-btn.active {
+  background: linear-gradient(135deg, var(--blue-accent), var(--ai-purple));
+  color: #ffffff !important;
+  border-color: transparent !important;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.45);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+  transform: none !important;
+  border-color: var(--border-color);
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 32px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.pagination-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.4rem;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.pagination-jump-input {
+  width: 44px;
+  height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 6px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pagination-jump-input:focus {
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Log Inspector Toolbar */
+.logs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.logs-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.logs-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.logs-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.logs-search-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.35rem 1.8rem 0.35rem 2rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  width: 220px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.logs-search-input:focus {
+  width: 260px;
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
+.status-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.status-pill-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.status-pill-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--blue-accent);
+  color: var(--blue-accent);
+}
+
+.status-pill-btn.success.active {
+  background: var(--bull-green-bg);
+  border-color: var(--bull-green);
+  color: var(--bull-green);
+}
+
+.status-pill-btn.failed.active {
+  background: var(--bear-red-bg);
+  border-color: var(--bear-red);
+  color: var(--bear-red);
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.th-sortable:hover {
+  color: var(--text-primary);
+}
+
+.sort-icon-box {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+  vertical-align: middle;
+}

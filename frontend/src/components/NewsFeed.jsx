@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { 
@@ -13,6 +13,7 @@ import {
   Plus, 
   Trash2 
 } from "lucide-react";
+import { Pagination } from "./Pagination";
 
 export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
   const { user } = useAuth();
@@ -23,6 +24,19 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
   const [notes, setNotes] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Pagination state for news
+  const [newsPage, setNewsPage] = useState(1);
+  const [newsPageSize, setNewsPageSize] = useState(6);
+
+  useEffect(() => {
+    setNewsPage(1);
+  }, [news.length]);
+
+  const paginatedNews = useMemo(() => {
+    const start = (newsPage - 1) * newsPageSize;
+    return news.slice(start, start + newsPageSize);
+  }, [news, newsPage, newsPageSize]);
 
   const canEdit = user?.role === "Admin" || user?.role === "Analyst";
 
@@ -81,7 +95,7 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
             No categorized news found for selected company filter.
           </div>
         ) : (
-          news.map((art) => (
+          paginatedNews.map((art) => (
             <div
               key={art.id}
               style={{
@@ -171,6 +185,22 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
           ))
         )}
       </div>
+
+      {/* Pagination Controls for News */}
+      {news.length > 0 && (
+        <Pagination
+          currentPage={newsPage}
+          totalItems={news.length}
+          pageSize={newsPageSize}
+          pageSizeOptions={[4, 6, 10, 20]}
+          onPageChange={(p) => setNewsPage(p)}
+          onPageSizeChange={(s) => {
+            setNewsPageSize(s);
+            setNewsPage(1);
+          }}
+          itemLabel="articles"
+        />
+      )}
 
       {/* Analyst Recategorization Modal */}
       {editingArticle && (
