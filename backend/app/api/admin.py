@@ -46,10 +46,10 @@ async def get_crawl_logs(
     status_filter: Optional[str] = Query(None, description="Filter by SUCCESS, FAILED, RUNNING"),
     portal: Optional[str] = Query(None, description="Filter by portal name"),
     db: AsyncSession = Depends(get_db),
-    analyst_user: User = Depends(require_role(UserRole.ANALYST))
+    current_user: User = Depends(require_role(UserRole.VIEWER))
 ):
     """
-    Returns crawl execution history and failure logs (Role-gated: Analyst / Admin).
+    Returns crawl execution history and failure logs (Role-gated: Read-only Viewer / Analyst / Admin).
     Surfaces crawl failures directly to the UI with optional filtering by status and portal.
     """
     query = select(CrawlLog).order_by(desc(CrawlLog.started_at)).limit(limit)
@@ -64,10 +64,10 @@ async def get_crawl_logs(
 
 @admin_router.get("/scheduler", response_model=SchedulerStatusOut)
 async def get_scheduler_status(
-    admin_user: User = Depends(require_role(UserRole.ANALYST))
+    current_user: User = Depends(require_role(UserRole.VIEWER))
 ):
     """
-    Returns automated unattended periodic scheduler status (Role-gated: Analyst / Admin).
+    Returns automated unattended periodic scheduler status (Role-gated: Read-only Viewer / Analyst / Admin).
     """
     return crawler_queue.get_scheduler_status()
 

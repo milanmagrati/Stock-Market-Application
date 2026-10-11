@@ -111,7 +111,6 @@ export const AdminOpsCenter = () => {
 
   // Data Fetching
   const fetchLogs = async () => {
-    if (!isAnalystOrAdmin) return;
     setIsRefreshingLogs(true);
     try {
       const logs = await api.getCrawlLogs(100);
@@ -124,7 +123,6 @@ export const AdminOpsCenter = () => {
   };
 
   const fetchScheduler = async () => {
-    if (!isAnalystOrAdmin) return;
     try {
       const status = await api.getSchedulerStatus();
       setSchedulerStatus(status);
@@ -870,14 +868,21 @@ export const AdminOpsCenter = () => {
                 <Clock size={18} color="var(--vwap-cyan)" />
                 <span>Crawl Execution History &amp; Diagnostic Logs</span>
               </div>
-              <button
-                onClick={fetchLogs}
-                disabled={isRefreshingLogs}
-                className="btn btn-secondary btn-sm"
-              >
-                <RefreshCw size={13} className={isRefreshingLogs ? "spin-fast" : ""} />
-                <span>Refresh Logs</span>
-              </button>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                {user?.role === "Viewer" && (
+                  <span className="badge badge-secondary" style={{ fontSize: "0.7rem", padding: "0.2rem 0.55rem" }}>
+                    Read-Only Telemetry Feed
+                  </span>
+                )}
+                <button
+                  onClick={fetchLogs}
+                  disabled={isRefreshingLogs}
+                  className="btn btn-secondary btn-sm"
+                >
+                  <RefreshCw size={13} className={isRefreshingLogs ? "spin-fast" : ""} />
+                  <span>Refresh Logs</span>
+                </button>
+              </div>
             </div>
 
             {/* Filter and Search Bar */}
@@ -927,37 +932,55 @@ export const AdminOpsCenter = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedLogs.map((log) => (
-                    <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
-                        {new Date(log.started_at).toLocaleTimeString()}
-                      </td>
-                      <td style={{ padding: "0.6rem", fontWeight: "600" }}>{log.portal}</td>
-                      <td style={{ padding: "0.6rem" }}>{log.crawl_type}</td>
-                      <td style={{ padding: "0.6rem" }}>
-                        <span className={`badge ${log.status === "SUCCESS" ? "badge-bull" : log.status === "FAILED" ? "badge-bear" : "badge-secondary"}`}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="font-mono" style={{ padding: "0.6rem" }}>{log.items_crawled}</td>
-                      <td style={{ padding: "0.6rem" }}>
-                        {log.error_message ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                            <span style={{ color: "var(--bear-red)", fontSize: "0.75rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {log.error_message}
-                            </span>
-                            <button
-                              onClick={() => setSelectedError(log)}
-                              className="btn btn-secondary btn-sm"
-                              style={{ padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}
-                            >
-                              <Eye size={11} /> Inspect
-                            </button>
-                          </div>
-                        ) : "— Clean —"}
+                  {pagedLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "2.5rem 1rem", textAlign: "center", color: "var(--text-muted)" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                          <Clock size={24} style={{ opacity: 0.4 }} />
+                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-secondary)" }}>
+                            No Crawl Execution Logs Found
+                          </span>
+                          <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                            {searchQuery.trim() || statusFilter !== "ALL"
+                              ? "Try adjusting your search query or status filter."
+                              : "No crawl logs have been recorded in the system yet."}
+                          </span>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    pagedLogs.map((log) => (
+                      <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                        <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
+                          {new Date(log.started_at).toLocaleTimeString()}
+                        </td>
+                        <td style={{ padding: "0.6rem", fontWeight: "600" }}>{log.portal}</td>
+                        <td style={{ padding: "0.6rem" }}>{log.crawl_type}</td>
+                        <td style={{ padding: "0.6rem" }}>
+                          <span className={`badge ${log.status === "SUCCESS" ? "badge-bull" : log.status === "FAILED" ? "badge-bear" : "badge-secondary"}`}>
+                            {log.status}
+                          </span>
+                        </td>
+                        <td className="font-mono" style={{ padding: "0.6rem" }}>{log.items_crawled}</td>
+                        <td style={{ padding: "0.6rem" }}>
+                          {log.error_message ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <span style={{ color: "var(--bear-red)", fontSize: "0.75rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {log.error_message}
+                              </span>
+                              <button
+                                onClick={() => setSelectedError(log)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}
+                              >
+                                <Eye size={11} /> Inspect
+                              </button>
+                            </div>
+                          ) : "— Clean —"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

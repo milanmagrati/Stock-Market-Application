@@ -131,8 +131,17 @@ async def test_rbac_admin_crawl():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         admin_token = create_access_token("admin@omway.com", role="Admin")
         analyst_token = create_access_token("analyst@omway.com", role="Analyst")
+        viewer_token = create_access_token("viewer@omway.com", role="Viewer")
 
-        # Analyst trying to trigger crawl -> 403 Forbidden
+        # 1. Viewer trying to trigger crawl -> 403 Forbidden
+        res_v = await ac.post(
+            "/api/admin/crawl-runs",
+            json={"portal": "merolagani.com", "crawl_type": "NEWS"},
+            headers={"Authorization": f"Bearer {viewer_token}"}
+        )
+        assert res_v.status_code == 403
+
+        # 2. Analyst trying to trigger crawl -> 403 Forbidden
         res_an = await ac.post(
             "/api/admin/crawl-runs",
             json={"portal": "merolagani.com", "crawl_type": "NEWS"},
@@ -140,7 +149,7 @@ async def test_rbac_admin_crawl():
         )
         assert res_an.status_code == 403
 
-        # Admin trigger crawl -> 200 OK
+        # 3. Admin trigger crawl -> 200 OK
         res_adm = await ac.post(
             "/api/admin/crawl-runs",
             json={"portal": "merolagani.com", "crawl_type": "NEWS"},
@@ -148,6 +157,30 @@ async def test_rbac_admin_crawl():
         )
         assert res_adm.status_code == 200
         assert "task_id" in res_adm.json()
+
+        # 4. Viewer read-only access: can view crawl logs (200 OK)
+        res_logs = await ac.get(
+            "/api/admin/crawl-logs",
+            headers={"Authorization": f"Bearer {viewer_token}"}
+        )
+        assert res_logs.status_code == 200
+        assert isinstance(res_logs.json(), list)
+
+        # 5. Viewer read-only access: can view scheduler status (200 OK)
+        res_sched = await ac.get(
+            "/api/admin/scheduler",
+            headers={"Authorization": f"Bearer {viewer_token}"}
+        )
+        assert res_sched.status_code == 200
+        assert "is_active" in res_sched.json()
+
+        # 6. Viewer mutation restriction: cannot toggle scheduler (403 Forbidden)
+        res_toggle = await ac.post(
+            "/api/admin/scheduler/toggle",
+            json={"enabled": True},
+            headers={"Authorization": f"Bearer {viewer_token}"}
+        )
+        assert res_toggle.status_code == 403
 
 @pytest.mark.asyncio
 async def test_rbac_report_export():
