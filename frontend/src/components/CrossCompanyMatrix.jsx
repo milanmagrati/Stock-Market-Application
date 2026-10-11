@@ -30,7 +30,7 @@ export const CrossCompanyMatrix = ({ comparisonData, onSelectCompany, companies 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* 3 Top Leaderboard Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+      <div className="leaderboard-grid">
         {/* Most Volatile */}
         <div className="card" style={{ borderLeft: "4px solid var(--anomaly-amber)" }}>
           <div className="card-header">
@@ -144,7 +144,7 @@ export const CrossCompanyMatrix = ({ comparisonData, onSelectCompany, companies 
 
       {/* Full Cross-Company Comparative Table */}
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
           <div className="card-title">
             <Layers size={18} color="var(--blue-accent)" />
             <span>Complete Cross-Company Intelligence Matrix ({all_companies.length} Companies)</span>
@@ -154,11 +154,15 @@ export const CrossCompanyMatrix = ({ comparisonData, onSelectCompany, companies 
           </span>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
+        <div className="table-swipe-hint">
+          <span>👈 Swipe table horizontally to inspect all 10 indicators</span>
+        </div>
+
+        <div className="table-scroll-container">
+          <table style={{ width: "100%", minWidth: "860px", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                <th style={{ padding: "0.75rem" }}>Symbol</th>
+                <th className="sticky-col-symbol" style={{ padding: "0.75rem" }}>Symbol</th>
                 <th style={{ padding: "0.75rem" }}>Company Name</th>
                 <th style={{ padding: "0.75rem" }}>Sector</th>
                 <th style={{ padding: "0.75rem" }}>Latest Close</th>
@@ -185,7 +189,7 @@ export const CrossCompanyMatrix = ({ comparisonData, onSelectCompany, companies 
                     onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-input)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                   >
-                    <td style={{ padding: "0.75rem", fontWeight: "700", color: "#fff" }}>
+                    <td className="sticky-col-symbol" style={{ padding: "0.75rem", fontWeight: "700", color: "var(--text-primary)" }}>
                       {row.symbol}
                     </td>
                     <td style={{ padding: "0.75rem", color: "var(--text-secondary)" }}>

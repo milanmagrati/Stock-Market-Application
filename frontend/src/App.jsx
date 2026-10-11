@@ -215,26 +215,15 @@ function DashboardContent() {
       />
 
       {/* Main Viewport Container */}
-      <main className="app-container" style={{ marginTop: "1.5rem" }}>
+      <main className="app-container" style={{ marginTop: "1rem" }}>
         {/* VIEW 1: PER-COMPANY INTELLIGENCE */}
         {activeTab === "company" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             {/* Company Filter Selector Header & Telemetry Control Bar */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "1rem",
-              background: "var(--bg-secondary)",
-              padding: "0.85rem 1.25rem",
-              borderRadius: "12px",
-              border: "1px solid var(--border-color)",
-              boxShadow: "var(--shadow-card)"
-            }}>
+            <div className="telemetry-control-bar">
               {/* Asset Selector */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.35rem", fontWeight: "500" }}>
+              <div className="telemetry-selector-group">
+                <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.35rem", fontWeight: "500", whiteSpace: "nowrap" }}>
                   <Filter size={15} color="var(--blue-accent)" /> Select Asset:
                 </span>
                 <select
@@ -245,10 +234,9 @@ function DashboardContent() {
                   }}
                   className="select"
                   style={{
-                    fontSize: "0.95rem",
+                    fontSize: "0.92rem",
                     fontWeight: "600",
-                    padding: "0.5rem 1rem",
-                    minWidth: "260px",
+                    padding: "0.5rem 0.85rem",
                     borderColor: "rgba(59, 130, 246, 0.4)",
                     background: "var(--bg-input)"
                   }}
@@ -260,14 +248,14 @@ function DashboardContent() {
                   ))}
                 </select>
                 {selectedCompany && (
-                  <span className="badge badge-bull" style={{ fontSize: "0.75rem" }}>
+                  <span className="badge badge-bull" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
                     {selectedCompany.sector}
                   </span>
                 )}
               </div>
 
               {/* Action Cluster: Auto-Stream Toggle + Synced Pill + Refresh Button */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div className="telemetry-action-group">
                 {/* Auto Stream Toggle */}
                 <div
                   onClick={() => setAutoStream(!autoStream)}
@@ -282,7 +270,7 @@ function DashboardContent() {
                     display: "inline-block"
                   }} />
                   <span style={{ fontWeight: "600" }}>
-                    {autoStream ? "Auto-Stream Active (5s)" : "Auto-Stream (5s)"}
+                    {autoStream ? "Auto-Stream (5s)" : "Auto-Stream"}
                   </span>
                 </div>
 
@@ -296,7 +284,8 @@ function DashboardContent() {
                   border: "1px solid var(--border-color)",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.35rem"
+                  gap: "0.35rem",
+                  whiteSpace: "nowrap"
                 }}>
                   <span>Synced:</span>
                   <strong style={{ color: "var(--vwap-cyan)" }}>{lastSyncedTime}</strong>
@@ -320,7 +309,7 @@ function DashboardContent() {
                     }}
                   />
                   <span>
-                    {isRefreshing ? "Syncing Market..." : justSynced ? "Synced!" : "Refresh Telemetry"}
+                    {isRefreshing ? "Syncing..." : justSynced ? "Synced!" : "Refresh Telemetry"}
                   </span>
                 </button>
               </div>
@@ -344,7 +333,7 @@ function DashboardContent() {
             </div>
 
             {/* Grid 2 Columns: Floorsheet Concentration & Categorized News Feed */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+            <div className="dashboard-two-col-grid">
               <FloorsheetPanel brokerData={behaviorData?.broker_breakdown} />
               <NewsFeed
                 news={news}

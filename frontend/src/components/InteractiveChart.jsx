@@ -68,21 +68,36 @@ export const InteractiveChart = ({ prices, anomalies, symbol }) => {
 
   const handleMouseLeave = () => setHoverIndex(null);
 
+  // Touch event handler for mobile and tablet touchscreens
+  const handleTouch = (e) => {
+    if (!containerRef.current || !e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const rect = containerRef.current.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const scaledX = (touchX / rect.width) * width;
+    const idx = Math.floor((scaledX - padding.left) / candleSpacing);
+    if (idx >= 0 && idx < numCandles) {
+      setHoverIndex(idx);
+    }
+  };
+
   const activeData = hoverIndex !== null ? prices[hoverIndex] : prices[prices.length - 1];
   const isHoverAnomaly = activeData && anomalyDateSet.has(activeData.date);
 
   return (
     <div className="card" style={{ position: "relative" }}>
       {/* Chart Header Bar */}
-      <div className="card-header" style={{ marginBottom: "0.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-          <div className="card-title">
+      <div className="card-header" style={{ marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1, minWidth: "240px" }}>
+          <div className="card-title" style={{ flexWrap: "wrap", gap: "0.4rem" }}>
             <Activity size={18} color="var(--blue-accent)" />
-            <span>{symbol} — 30-Day TradingView & VWAP Analytics</span>
+            <span>{symbol} — 30-Day TradingView &amp; VWAP Analytics</span>
           </div>
           {activeData && (
-            <div className="font-mono" style={{ display: "flex", gap: "0.75rem", fontSize: "0.78rem" }}>
-              <span style={{ color: "var(--text-muted)" }}>Date: <strong style={{ color: "#fff" }}>{activeData.date}</strong></span>
+            <div className="font-mono" style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem 0.65rem", fontSize: "0.74rem" }}>
+              <span style={{ color: "var(--text-muted)", background: "var(--bg-input)", padding: "0.15rem 0.4rem", borderRadius: "4px" }}>
+                Date: <strong style={{ color: "var(--text-primary)" }}>{activeData.date}</strong>
+              </span>
               <span>O: <strong style={{ color: "var(--text-primary)" }}>{activeData.open}</strong></span>
               <span>H: <strong style={{ color: "var(--bull-green)" }}>{activeData.high}</strong></span>
               <span>L: <strong style={{ color: "var(--bear-red)" }}>{activeData.low}</strong></span>
@@ -94,20 +109,21 @@ export const InteractiveChart = ({ prices, anomalies, symbol }) => {
         </div>
 
         {/* View Controls */}
-        <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
           <button
             onClick={() => setShowVwap(!showVwap)}
             style={{
               background: showVwap ? "var(--vwap-cyan-bg)" : "transparent",
               color: showVwap ? "var(--vwap-cyan)" : "var(--text-muted)",
               border: `1px solid ${showVwap ? "rgba(6, 182, 212, 0.4)" : "var(--border-color)"}`,
-              padding: "0.2rem 0.5rem",
+              padding: "0.25rem 0.55rem",
               borderRadius: "6px",
               fontSize: "0.72rem",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: "0.3rem"
+              gap: "0.3rem",
+              minHeight: "28px"
             }}
           >
             <Zap size={12} />
@@ -119,13 +135,14 @@ export const InteractiveChart = ({ prices, anomalies, symbol }) => {
               background: showAnomalies ? "var(--anomaly-amber-bg)" : "transparent",
               color: showAnomalies ? "var(--anomaly-amber)" : "var(--text-muted)",
               border: `1px solid ${showAnomalies ? "rgba(245, 158, 11, 0.4)" : "var(--border-color)"}`,
-              padding: "0.2rem 0.5rem",
+              padding: "0.25rem 0.55rem",
               borderRadius: "6px",
               fontSize: "0.72rem",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: "0.3rem"
+              gap: "0.3rem",
+              minHeight: "28px"
             }}
           >
             <AlertTriangle size={12} />
@@ -134,12 +151,15 @@ export const InteractiveChart = ({ prices, anomalies, symbol }) => {
         </div>
       </div>
 
-      {/* SVG Chart Surface */}
+      {/* SVG Chart Surface with Mouse & Touch Scrubbing */}
       <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        style={{ cursor: "crosshair", position: "relative", width: "100%", overflow: "hidden" }}
+        onTouchStart={handleTouch}
+        onTouchMove={handleTouch}
+        onTouchEnd={() => setHoverIndex(null)}
+        style={{ cursor: "crosshair", position: "relative", width: "100%", overflow: "hidden", touchAction: "none" }}
       >
         <svg
           viewBox={`0 0 ${width} ${height}`}

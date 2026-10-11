@@ -40,7 +40,7 @@ export const FloorsheetPanel = ({ brokerData }) => {
         </div>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Snapshot Date: <strong style={{ color: "#fff" }}>{date || "Latest"}</strong>
+            Snapshot Date: <strong style={{ color: "var(--text-primary)" }}>{date || "Latest"}</strong>
           </span>
           <span className="badge badge-vwap">
             {total_transactions} Contracts
@@ -51,7 +51,7 @@ export const FloorsheetPanel = ({ brokerData }) => {
       {/* Summary KPI row */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr 1fr",
+        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
         gap: "0.75rem",
         marginBottom: "1.25rem",
         background: "var(--bg-input)",
@@ -73,8 +73,8 @@ export const FloorsheetPanel = ({ brokerData }) => {
         </div>
       </div>
 
-      {/* Two Columns: Buyers vs Sellers */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+      {/* Two Columns: Buyers vs Sellers (Responsive 1-col on mobile) */}
+      <div className="floorsheet-columns-grid">
         {/* Top Accumulators (Buyers) */}
         <div>
           <div style={{

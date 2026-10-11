@@ -57,12 +57,12 @@ export const ReportExportModal = ({ isOpen, onClose, companies, selectedCompany 
       alignItems: "center",
       justifyContent: "center",
       zIndex: 110,
-      padding: "1rem"
+      padding: "0.75rem"
     }}>
-      <div className="card" style={{ maxWidth: "540px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+      <div className="card" style={{ maxWidth: "min(540px, 94vw)", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
         {/* Header */}
         <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-          <div className="card-title">
+          <div className="card-title" style={{ flexWrap: "wrap", gap: "0.4rem" }}>
             <Download size={18} color="var(--blue-accent)" />
             <span>Export Institutional Market Intelligence Report</span>
           </div>
@@ -138,7 +138,7 @@ export const ReportExportModal = ({ isOpen, onClose, companies, selectedCompany 
               <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
                 REPORT DATA SCOPE
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.5rem" }}>
                 <button
                   type="button"
                   onClick={() => setScope("single")}
@@ -163,7 +163,7 @@ export const ReportExportModal = ({ isOpen, onClose, companies, selectedCompany 
               <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
                 OUTPUT FORMAT
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.5rem" }}>
                 <button
                   type="button"
                   onClick={() => setFormat("csv")}

@@ -128,6 +128,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   margin-bottom: 1rem;
 }
 .card-title {
@@ -147,10 +149,11 @@ body {
   gap: 0.25rem;
   padding: 0.2rem 0.55rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 .badge-bull {
   background: var(--bull-green-bg);
@@ -1528,4 +1531,475 @@ body {
   margin-right: 0.3rem;
   margin-bottom: 0.2rem;
 }
+
+/* ==========================================================================
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM (MOBILE, TABLET, DESKTOP)
+   ========================================================================== */
+
+/* 1. Global Responsive Grids & Layout Containers */
+.dashboard-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.floorsheet-columns-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.kpi-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.leaderboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.telemetry-control-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+}
+
+.telemetry-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.telemetry-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Table scroll wrapper with institutional swipe indicator */
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  position: relative;
+}
+
+.table-swipe-hint {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--vwap-cyan);
+  padding: 0.35rem 0.65rem;
+  margin-bottom: 0.5rem;
+  background: var(--vwap-cyan-bg);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 6px;
+  user-select: none;
+}
+
+/* Sticky column for tables on mobile */
+.sticky-col-symbol {
+  position: sticky;
+  left: 0;
+  background: var(--bg-card);
+  z-index: 2;
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+/* 2. Responsive Navbar Components */
+.navbar-header {
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0.65rem 1.25rem;
+}
+
+.navbar-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.navbar-brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.brand-subtitle-desktop {
+  display: block;
+}
+
+.navbar-nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.navbar-actions-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar-mobile-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.navbar-mobile-toggle-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--blue-accent);
+}
+
+.navbar-mobile-right {
+  display: none;
+}
+
+/* Mobile Tabs Sticky Sub-Bar */
+.navbar-mobile-subbar {
+  display: none;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.45rem 0.75rem;
+  position: sticky;
+  top: 56px;
+  z-index: 90;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-tabs-segmented {
+  display: flex;
+  width: 100%;
+  background: var(--bg-input);
+  border-radius: 10px;
+  padding: 0.22rem;
+  border: 1px solid var(--border-color);
+  gap: 0.2rem;
+}
+
+.mobile-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.mobile-tab-btn.active {
+  background: linear-gradient(135deg, var(--blue-accent), #4f46e5);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
+/* Mobile Drawer Overlay & Panel */
+.navbar-mobile-drawer {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(3, 7, 18, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 95;
+  animation: modalBackdropFadeIn 0.2s ease-out;
+}
+
+.navbar-mobile-drawer-content {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideDownFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-role-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* 3. Breakpoint: TABLET & SMALL LAPTOP (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .app-container {
+    padding: 0 1.15rem 2.5rem;
+  }
+
+  .dashboard-two-col-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .navbar-nav-desktop .btn span {
+    font-size: 0.8rem;
+  }
+}
+
+/* 4. Breakpoint: TABLET PORTRAIT & MOBILE (max-width: 768px) */
+@media (max-width: 768px) {
+  .navbar-nav-desktop {
+    display: none;
+  }
+
+  .navbar-actions-desktop {
+    display: none;
+  }
+
+  .navbar-mobile-toggle-btn {
+    display: inline-flex;
+  }
+
+  .navbar-mobile-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .navbar-mobile-subbar {
+    display: block;
+  }
+
+  .navbar-mobile-drawer.open {
+    display: block;
+  }
+
+  .floorsheet-columns-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .telemetry-control-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.85rem 1rem;
+    gap: 0.85rem;
+  }
+
+  .telemetry-selector-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .telemetry-selector-group select {
+    flex: 1;
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .telemetry-action-group {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .table-swipe-hint {
+    display: flex;
+  }
+
+  /* Pagination Responsive Stack */
+  .pagination-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .pagination-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pagination-nav {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Watchlist Toolbar */
+  .watchlist-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .watchlist-toolbar-left {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .watchlist-search-box {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* 5. Breakpoint: COMPACT MOBILE PHONES (max-width: 640px) */
+@media (max-width: 640px) {
+  .brand-subtitle-desktop {
+    display: none;
+  }
+
+  .app-container {
+    padding: 0 0.65rem 2rem;
+  }
+
+  .card {
+    padding: 1rem 0.85rem;
+    border-radius: 10px;
+  }
+
+  .kpi-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .leaderboard-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Telemetry Actions on Mobile */
+  .telemetry-action-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .telemetry-action-group .btn-refresh-telemetry {
+    grid-column: span 2;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Toast Container full-width on mobile */
+  .toast-container {
+    left: 0.65rem;
+    right: 0.65rem;
+    bottom: 0.75rem;
+    max-width: none;
+    width: auto;
+  }
+
+  .toast-item-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  /* Modals full-width on small screens */
+  .modal-overlay {
+    padding: 0.65rem;
+  }
+
+  .modal-container {
+    max-width: 100%;
+    max-height: 88dvh;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 0.9rem 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 0.85rem 1rem;
+  }
+
+  /* Pagination hide jump on mobile */
+  .pagination-jump {
+    display: none;
+  }
+
+  .pagination-ellipsis {
+    min-width: 16px;
+    font-size: 0.65rem;
+  }
+
+  .pagination-btn {
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.72rem;
+    padding: 0 0.35rem;
+  }
+}
+
+/* 6. Breakpoint: ULTRA-COMPACT MOBILE PHONES (max-width: 480px) */
+@media (max-width: 480px) {
+  .kpi-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .navbar-brand-section .font-display {
+    font-size: 1rem;
+  }
+
+  .mobile-tab-btn {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.15rem;
+  }
+}
+
 

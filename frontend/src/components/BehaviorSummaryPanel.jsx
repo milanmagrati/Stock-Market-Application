@@ -33,7 +33,7 @@ export const BehaviorSummaryPanel = ({ behaviorData, onOpenExport }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       {/* KPI Cards Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+      <div className="kpi-cards-grid">
         {/* VWAP vs Close Card */}
         <div className="card">
           <div className="card-header">
@@ -125,7 +125,7 @@ export const BehaviorSummaryPanel = ({ behaviorData, onOpenExport }) => {
         {/* Bonus ML Next-Day Direction Predictor */}
         {predicted_next_day_direction && (
           <div className="card" style={{ border: "1px solid rgba(139, 92, 246, 0.3)" }}>
-            <div className="card-header">
+            <div className="card-header" style={{ flexWrap: "wrap", gap: "0.35rem" }}>
               <span style={{ fontSize: "0.8rem", color: "var(--ai-purple)", display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: "600" }}>
                 <Cpu size={14} color="var(--ai-purple)" />
                 AI DIRECTION MODEL (T+1)
@@ -197,8 +197,12 @@ export const BehaviorSummaryPanel = ({ behaviorData, onOpenExport }) => {
               {news_movement_checks.length} Verified Events
             </span>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+
+          <div className="table-swipe-hint">
+            <span>👈 Swipe table horizontally to inspect all metrics</span>
+          </div>
+          <div className="table-scroll-container">
+            <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
                   <th style={{ padding: "0.6rem" }}>News Date</th>

@@ -638,7 +638,7 @@ export const AdminOpsCenter = () => {
                 </div>
                 <span className="badge badge-ai">robots.txt Compliant</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.5rem", fontSize: "0.75rem" }}>
                 {PORTALS.map((p) => (
                   <div key={p.name} style={{ background: "var(--bg-input)", padding: "0.4rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}>
                     <div style={{ fontWeight: "600", color: "var(--text-primary)" }}>{p.name}</div>
@@ -919,8 +919,11 @@ export const AdminOpsCenter = () => {
             </div>
 
             {/* Logs Table */}
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+            <div className="table-swipe-hint">
+              <span>👈 Swipe table horizontally to inspect all execution columns</span>
+            </div>
+            <div className="table-scroll-container">
+              <table style={{ width: "100%", minWidth: "680px", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "0.6rem" }}>Timestamp</th>
@@ -1123,11 +1126,14 @@ export const AdminOpsCenter = () => {
             </div>
 
             {/* Table */}
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+            <div className="table-swipe-hint">
+              <span>👈 Swipe table horizontally to inspect all watchlist columns</span>
+            </div>
+            <div className="table-scroll-container">
+              <table style={{ width: "100%", minWidth: "820px", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)", background: "var(--bg-input)" }}>
-                    <th onClick={() => handleWatchSort("symbol")} className="th-sortable" style={{ padding: "0.7rem 0.85rem" }}>
+                    <th onClick={() => handleWatchSort("symbol")} className="th-sortable sticky-col-symbol" style={{ padding: "0.7rem 0.85rem" }}>
                       Symbol
                       <span className="sort-icon-box">
                         {watchSortField === "symbol" ? (watchSortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} opacity={0.4} />}
@@ -1176,7 +1182,7 @@ export const AdminOpsCenter = () => {
                   ) : (
                     pagedCompanies.map((c) => (
                       <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background 0.15s ease" }}>
-                        <td className="font-mono" style={{ padding: "0.7rem 0.85rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                        <td className="font-mono sticky-col-symbol" style={{ padding: "0.7rem 0.85rem", fontWeight: "700", color: "var(--text-primary)" }}>
                           <span style={{
                             display: "inline-block",
                             padding: "0.2rem 0.45rem",
@@ -1318,8 +1324,11 @@ export const AdminOpsCenter = () => {
               </div>
             </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+            <div className="table-swipe-hint">
+              <span>👈 Swipe table horizontally to inspect user permissions</span>
+            </div>
+            <div className="table-scroll-container">
+              <table style={{ width: "100%", minWidth: "620px", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)", background: "var(--bg-input)" }}>
                     <th style={{ padding: "0.7rem 0.85rem" }}>Full Name</th>
@@ -1439,8 +1448,11 @@ export const AdminOpsCenter = () => {
               />
             </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
+            <div className="table-swipe-hint">
+              <span>👈 Swipe table horizontally to inspect AI audit log history</span>
+            </div>
+            <div className="table-scroll-container">
+              <table style={{ width: "100%", minWidth: "750px", borderCollapse: "collapse", fontSize: "0.8rem", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "0.6rem" }}>Timestamp</th>

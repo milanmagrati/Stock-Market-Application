@@ -75,12 +75,12 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
   return (
     <div className="card">
       {/* Header */}
-      <div className="card-header">
+      <div className="card-header" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
         <div className="card-title">
           <Newspaper size={18} color="var(--blue-accent)" />
           <span>Categorized Financial Intelligence Feed</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
             {news.length} Articles Tracked
           </span>
@@ -218,7 +218,7 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
           zIndex: 100,
           padding: "1rem"
         }}>
-          <div className="card" style={{ maxWidth: "520px", width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-glow)" }}>
+          <div className="card" style={{ maxWidth: "min(520px, 94vw)", width: "100%", maxHeight: "90vh", overflowY: "auto", background: "var(--bg-secondary)", border: "1px solid var(--border-glow)" }}>
             <div className="card-header">
               <div className="card-title">
                 <Edit3 size={16} color="var(--ai-purple)" />
@@ -233,7 +233,7 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
             </div>
 
             <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginBottom: "1rem", lineHeight: "1.4" }}>
-              <strong style={{ color: "#fff" }}>Article:</strong> {editingArticle.headline}
+              <strong style={{ color: "var(--text-primary)" }}>Article:</strong> {editingArticle.headline}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", fontSize: "0.82rem" }}>
