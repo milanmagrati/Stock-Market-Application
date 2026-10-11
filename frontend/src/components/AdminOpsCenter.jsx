@@ -45,6 +45,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Pagination } from "./Pagination";
+import { formatNepaliTime, formatNepaliDate, formatNepaliDateTime } from "../services/nepalTime";
 
 const PORTALS = [
   { name: "merolagani.com", type: "Financial News & Quotes", rateLimit: "2.0s", robots: "Compliant" },
@@ -166,7 +167,7 @@ export const AdminOpsCenter = () => {
     fetchWatchlist();
     if (isAdmin) fetchUsers();
     if (isAnalystOrAdmin) fetchCorrections();
-  }, [user]);
+  }, [user?.role]);
 
   // Crawler Trigger Handler
   const handleTriggerCrawl = async () => {
@@ -954,8 +955,30 @@ export const AdminOpsCenter = () => {
                   ) : (
                     pagedLogs.map((log) => (
                       <tr key={log.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                        <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
-                          {new Date(log.started_at).toLocaleTimeString()}
+                        <td className="font-mono" style={{ padding: "0.6rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <span style={{ fontWeight: "600", color: "var(--text-primary)" }}>
+                              {formatNepaliTime(log.started_at)}
+                            </span>
+                            <span
+                              className="badge"
+                              style={{
+                                fontSize: "0.62rem",
+                                padding: "0.08rem 0.32rem",
+                                background: "rgba(6, 182, 212, 0.12)",
+                                color: "var(--vwap-cyan)",
+                                border: "1px solid rgba(6, 182, 212, 0.25)",
+                                fontWeight: "700",
+                                letterSpacing: "0.04em"
+                              }}
+                              title={`Nepal Standard Time (NPT: UTC+5:45) — Date: ${formatNepaliDate(log.started_at)}`}
+                            >
+                              NPT
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            {formatNepaliDate(log.started_at)}
+                          </div>
                         </td>
                         <td style={{ padding: "0.6rem", fontWeight: "600" }}>{log.portal}</td>
                         <td style={{ padding: "0.6rem" }}>{log.crawl_type}</td>
@@ -1468,7 +1491,7 @@ export const AdminOpsCenter = () => {
                   {pagedCorrections.map((c) => (
                     <tr key={c.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
                       <td className="font-mono" style={{ padding: "0.6rem", color: "var(--text-muted)" }}>
-                        {new Date(c.created_at).toLocaleDateString()}
+                        {formatNepaliDate(c.created_at)}
                       </td>
                       <td className="font-mono" style={{ padding: "0.6rem", fontWeight: "700", color: "var(--blue-accent)" }}>
                         {c.company_symbol}
@@ -1879,7 +1902,7 @@ export const AdminOpsCenter = () => {
                 </div>
                 <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>TIMESTAMP</div>
-                  <div className="font-mono" style={{ fontSize: "0.8rem" }}>{new Date(selectedError.started_at).toLocaleString()}</div>
+                  <div className="font-mono" style={{ fontSize: "0.8rem" }}>{formatNepaliDateTime(selectedError.started_at)}</div>
                 </div>
                 <div style={{ background: "var(--bg-input)", padding: "0.6rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>STATUS</div>

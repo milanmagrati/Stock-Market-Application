@@ -14,6 +14,7 @@ import {
   Trash2 
 } from "lucide-react";
 import { Pagination } from "./Pagination";
+import { formatNepaliDateTime } from "../services/nepalTime";
 
 export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
   const { user } = useAuth();
@@ -117,7 +118,7 @@ export const NewsFeed = ({ news, companies, onNewsUpdated }) => {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
                   <Clock size={12} />
-                  <span>{new Date(art.published_at).toLocaleString()}</span>
+                  <span>{formatNepaliDateTime(art.published_at)}</span>
                 </div>
               </div>
 

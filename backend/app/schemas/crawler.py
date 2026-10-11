@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 class CrawlLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -13,6 +13,14 @@ class CrawlLogOut(BaseModel):
     error_message: Optional[str] = None
     started_at: datetime
     finished_at: Optional[datetime] = None
+
+    @field_serializer("started_at", "finished_at", when_used="json")
+    def serialize_datetime(self, dt: Optional[datetime]) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
 class CrawlTriggerRequest(BaseModel):
     portal: Optional[str] = "all"  # "all", "merolagani.com", "sharesansar.com", "nepsealpha.com", "bizmandu.com"

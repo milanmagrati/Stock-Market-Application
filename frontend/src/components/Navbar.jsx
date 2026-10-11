@@ -41,25 +41,15 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
         <div className="navbar-container">
           {/* Brand Identity */}
           <div className="navbar-brand-section">
-            <div style={{
-              background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-              width: "36px",
-              height: "36px",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 0 15px rgba(59, 130, 246, 0.35)",
-              flexShrink: 0
-            }}>
-              <TrendingUp size={20} color="#fff" />
+            <div className="navbar-logo-icon">
+              <TrendingUp size={18} color="#fff" />
             </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "nowrap" }}>
-                <span className="font-display" style={{ fontSize: "1.1rem", fontWeight: "700", letterSpacing: "-0.02em" }}>
+            <div className="navbar-brand-text-col">
+              <div className="navbar-brand-row">
+                <span className="font-display navbar-brand-title">
                   OMWAY
                 </span>
-                <span style={{ fontSize: "0.78rem", color: "var(--vwap-cyan)", fontWeight: "600", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                <span className="navbar-brand-badge">
                   NEPSE INTELLIGENCE
                 </span>
               </div>
@@ -135,16 +125,8 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
             </button>
 
             {/* RBAC Role Switcher */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.2rem",
-              background: "var(--bg-input)",
-              padding: "0.22rem",
-              borderRadius: "9px",
-              border: "1px solid var(--border-color)"
-            }}>
-              <div style={{ padding: "0 0.35rem", display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+            <div className="rbac-switcher-container">
+              <div className="rbac-label">
                 <ShieldCheck size={13} color="var(--ai-purple)" />
                 <span>Role:</span>
               </div>
@@ -152,17 +134,8 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
                 <button
                   key={item.role}
                   onClick={() => switchRole(item.role)}
-                  style={{
-                    background: user?.role === item.role ? "var(--blue-accent)" : "transparent",
-                    color: user?.role === item.role ? "#fff" : "var(--text-secondary)",
-                    border: "none",
-                    padding: "0.22rem 0.55rem",
-                    borderRadius: "6px",
-                    fontSize: "0.72rem",
-                    fontWeight: user?.role === item.role ? "600" : "400",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease"
-                  }}
+                  className={`rbac-pill-btn ${user?.role === item.role ? "active" : ""}`}
+                  title={`Switch to ${item.label}`}
                 >
                   {item.role}
                 </button>
@@ -191,15 +164,15 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
             {/* Mobile Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="theme-toggle-btn"
-              style={{ padding: "0.3rem 0.55rem" }}
+              className="navbar-theme-toggle-mobile"
               title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+              aria-label="Toggle Theme"
             >
-              <div className="theme-icon-container" style={{ width: "20px", height: "20px" }}>
+              <div className="theme-icon-container" style={{ width: "20px", height: "20px", border: "none", background: "transparent" }}>
                 {theme === "dark" ? (
-                  <Sun size={12} color="#f59e0b" />
+                  <Sun size={15} color="#f59e0b" />
                 ) : (
-                  <Moon size={12} color="#3b82f6" />
+                  <Moon size={15} color="#3b82f6" />
                 )}
               </div>
             </button>
@@ -211,7 +184,7 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               title="Toggle Menu & Role Controls"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
@@ -284,17 +257,7 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
                   <button
                     key={item.role}
                     onClick={() => handleSelectRole(item.role)}
-                    className="btn"
-                    style={{
-                      background: user?.role === item.role ? "var(--blue-accent)" : "var(--bg-input)",
-                      color: user?.role === item.role ? "#fff" : "var(--text-secondary)",
-                      border: `1px solid ${user?.role === item.role ? "var(--blue-accent)" : "var(--border-color)"}`,
-                      fontSize: "0.75rem",
-                      fontWeight: user?.role === item.role ? "700" : "500",
-                      padding: "0.45rem 0.2rem",
-                      justifyContent: "center",
-                      borderRadius: "7px"
-                    }}
+                    className={`drawer-role-btn ${user?.role === item.role ? "active" : ""}`}
                   >
                     {item.role}
                   </button>
