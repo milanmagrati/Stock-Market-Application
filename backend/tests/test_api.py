@@ -15,9 +15,50 @@ from app.core.security import create_access_token
 async def test_health():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # API Health (JSON)
         res = await ac.get("/api/health")
         assert res.status_code == 200
         assert res.json()["status"] == "HEALTHY"
+
+        res_slash = await ac.get("/api/health/")
+        assert res_slash.status_code == 200
+        assert res_slash.json()["status"] == "HEALTHY"
+
+        # Cron-Job.org / Render Keepalive Endpoints (Lightweight Plaintext "OK")
+        res_cron = await ac.get("/health")
+        assert res_cron.status_code == 200
+        assert res_cron.text == "OK"
+        assert len(res_cron.content) <= 5  # Prevents cron-job.org "output too large"
+
+        res_cron_slash = await ac.get("/health/")
+        assert res_cron_slash.status_code == 200
+        assert res_cron_slash.text == "OK"
+        assert len(res_cron_slash.content) <= 5
+
+        res_ping = await ac.get("/ping")
+        assert res_ping.status_code == 200
+        assert res_ping.text == "OK"
+
+        # HEAD requests (Zero body)
+        res_head = await ac.head("/health")
+        assert res_head.status_code == 200
+        assert len(res_head.content) == 0
+
+        res_head_api = await ac.head("/api/health")
+        assert res_head_api.status_code == 200
+        assert len(res_head_api.content) == 0
+
+        # Root URL https://omway-nepse-intelligence.onrender.com/ tests
+        # 1. cron-job.org pinging root directly -> returns 2-byte OK
+        res_root_cron = await ac.get("/", headers={"User-Agent": "cron-job.org/2.0"})
+        assert res_root_cron.status_code == 200
+        assert res_root_cron.text == "OK"
+        assert len(res_root_cron.content) <= 5
+
+        # 2. HEAD on root -> returns 200 OK with 0 bytes
+        res_root_head = await ac.head("/")
+        assert res_root_head.status_code == 200
+        assert len(res_root_head.content) == 0
 
 @pytest.mark.asyncio
 async def test_get_companies():

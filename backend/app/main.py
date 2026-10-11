@@ -61,7 +61,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse, Response
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 
@@ -70,7 +70,7 @@ frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "di
 # Centralized Validation and Error Handling
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    if exc.status_code == 404 and not request.url.path.startswith(("/api", "/ws")):
+    if exc.status_code == 404 and not request.url.path.startswith(("/api", "/ws", "/health", "/ping")):
         index_file = frontend_dist / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
@@ -118,13 +118,82 @@ app.include_router(admin_router)
 app.include_router(reports_router)
 app.include_router(ws_router)
 
-@app.get("/api/health", tags=["Health"])
-async def health_check():
-    return {
-        "status": "HEALTHY",
-        "service": settings.PROJECT_NAME,
-        "environment": settings.ENVIRONMENT
+# Keepalive Health Endpoints (Optimized for cron-job.org & Render uptime monitoring)
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/health/", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route("/ping", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/ping/", methods=["GET", "HEAD"], include_in_schema=False)
+async def keepalive_health_check(request: Request):
+    """
+    Ultra-lightweight keep-alive endpoint for cron-job.org, Render health checks,
+    and external uptime monitors. Returns a 2-byte 'OK' response to prevent
+    'output too large' errors on cron-job.org and keep the Render service active.
+    """
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
     }
+    if request.method == "HEAD":
+        return Response(status_code=status.HTTP_200_OK, media_type="text/plain", headers=headers)
+    
+    # Optional JSON format support if requested
+    accept = request.headers.get("accept", "")
+    format_query = request.query_params.get("format", "").lower()
+    if format_query == "json" or (accept == "application/json" and not request.query_params.get("plain")):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "OK"},
+            headers=headers
+        )
+
+    return PlainTextResponse("OK", status_code=status.HTTP_200_OK, headers=headers)
+
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/api/health/", methods=["GET", "HEAD"], include_in_schema=False)
+async def api_health_check(request: Request):
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
+    if request.method == "HEAD":
+        return Response(status_code=status.HTTP_200_OK, headers=headers)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "HEALTHY",
+            "service": settings.PROJECT_NAME,
+            "environment": settings.ENVIRONMENT
+        },
+        headers=headers
+    )
+
+# Dual-purpose root endpoint for https://omway-nepse-intelligence.onrender.com/
+# 1) If pinged by cron-job.org or uptime bots: returns a 2-byte 'OK' to prevent "output too large"
+# 2) If opened by human users in a browser: serves the full trading application frontend
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+async def root_index(request: Request):
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+    if request.method == "HEAD":
+        return Response(status_code=status.HTTP_200_OK, media_type="text/plain", headers=headers)
+
+    user_agent = request.headers.get("user-agent", "").lower()
+    is_cron = any(bot in user_agent for bot in [
+        "cron-job", "cronjob", "uptimerobot", "pingdom", "betteruptime", "render", "healthcheck", "keepalive", "curl"
+    ])
+    has_keepalive_param = any(k in request.query_params for k in ["keepalive", "health", "ping"])
+
+    if is_cron or has_keepalive_param:
+        return PlainTextResponse("OK", status_code=status.HTTP_200_OK, headers=headers)
+
+    index_file = frontend_dist / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+
+    return PlainTextResponse("OK", status_code=status.HTTP_200_OK, headers=headers)
 
 # Mount static frontend production build if available
 if frontend_dist.exists():

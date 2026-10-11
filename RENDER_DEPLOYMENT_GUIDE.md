@@ -124,3 +124,25 @@ Once the build finishes and shows **Live**:
    - As Admin, inspect active partitions at:
      `GET https://<your-service-name>.onrender.com/api/admin/partitions`
    - Returns 122 active declarative partition tables in Supabase Postgres.
+
+---
+
+## Keeping Render Active 24/7 (cron-job.org Setup)
+
+Render's free tier spins down web services after **15 minutes of inactivity**, causing initial 30-50 second cold-start latency when users open the app.
+
+### Why `Failed (output too large)` Happened Previously:
+When pinging the root domain (e.g. `https://<service-name>.onrender.com/`), the server serves the entire Single-Page Application (HTML, scripts, styles). `cron-job.org` free accounts limit execution output logs to a few kilobytes, causing the job to fail with **"Failed (output too large)"**.
+
+### The Solution:
+We implemented an ultra-lightweight keep-alive endpoint:
+- **URL**: `https://<your-service-name>.onrender.com/health/` (or `https://<your-domain>/health/`)
+- **Response**: 2-byte plain text `OK` (identical to `https://milanmagrati.com.np/health/`)
+- **Headers**: Non-cacheable (`Cache-Control: no-cache, no-store, must-revalidate`), resetting Render's 15-minute sleep timer on every ping.
+
+### Configuration on cron-job.org:
+1. **Title**: `Omway NEPSE Keepalive`
+2. **URL**: `https://<your-service-name>.onrender.com/health/`
+3. **Execution Schedule**: Every **10 minutes** (or **14 minutes** — MUST be under 15 minutes)
+4. **Request Method**: `GET` or `HEAD`
+5. **Expected Output**: `OK` (Execution time ~1-2s, 100% Successful)

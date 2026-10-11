@@ -15,10 +15,18 @@ async def run_all_tests():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. Health check
+        # 1. Health checks
         res = await client.get("/api/health")
         assert res.status_code == 200, f"Health check failed: {res.text}"
         print(" [PASS] GET /api/health -> 200 OK")
+
+        res_keepalive = await client.get("/health/")
+        assert res_keepalive.status_code == 200 and res_keepalive.text == "OK", f"Keepalive check failed: {res_keepalive.text}"
+        print(" [PASS] GET /health/ -> 200 OK (2-byte keepalive)")
+
+        res_root_cron = await client.get("/", headers={"User-Agent": "cron-job.org/2.0"})
+        assert res_root_cron.status_code == 200 and res_root_cron.text == "OK", f"Root keepalive failed: {res_root_cron.text}"
+        print(" [PASS] GET / (cron-job.org) -> 200 OK (2-byte keepalive)")
 
         # 2. Watchlist of companies
         res = await client.get("/api/companies")
