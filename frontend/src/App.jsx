@@ -379,10 +379,73 @@ function DashboardContent() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Dashboard caught client runtime error:", error, errorInfo);
+  }
+
+  handleReload = () => {
+    localStorage.removeItem("nepse_user");
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-primary, #0a0e17)",
+          color: "var(--text-primary, #ffffff)",
+          padding: "2rem",
+          textAlign: "center"
+        }}>
+          <div style={{
+            background: "var(--bg-card, #111827)",
+            border: "1px solid var(--border-color, #1f2937)",
+            padding: "2rem",
+            borderRadius: "12px",
+            maxWidth: "480px"
+          }}>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: "700", marginBottom: "0.75rem" }}>
+              NEPSE Intelligence Workspace
+            </h2>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary, #9ca3af)", marginBottom: "1.25rem", lineHeight: "1.5" }}>
+              A telemetry render state hiccup was intercepted. Click below to safely restore and refresh the analytics workspace.
+            </p>
+            <button
+              onClick={this.handleReload}
+              className="btn btn-primary"
+              style={{ padding: "0.5rem 1.25rem", fontSize: "0.85rem", margin: "0 auto" }}
+            >
+              Reload &amp; Reconnect Workspace
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <DashboardContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DashboardContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

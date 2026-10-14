@@ -26,7 +26,30 @@ export const BehaviorSummaryPanel = ({
   const [viewMode, setViewMode] = useState("structured"); // "structured" | "raw"
   const [copied, setCopied] = useState(false);
 
-  if (!behaviorData) return null;
+  // Unconditionally call useMemo at the top level to adhere strictly to React Hook Rules
+  const findingsParsed = useMemo(() => {
+    if (!behaviorData?.written_findings) return null;
+    const lines = behaviorData.written_findings.split("\n").filter(l => l.trim().length > 0);
+    const header = lines.find(l => l.startsWith("Empirical Behavior Analysis")) || `Empirical Behavior Analysis for ${behaviorData?.symbol || ""}:`;
+    
+    const rawNews = lines.find(l => l.startsWith("1. News vs Next-Day Movement:")) || "";
+    const rawAnomaly = lines.find(l => l.startsWith("2. Volume Anomaly & Floorsheet Dynamics:")) || "";
+    const rawVwap = lines.find(l => l.startsWith("3. VWAP Accumulation Status:")) || "";
+
+    const newsText = rawNews.replace(/^1\.\s*News vs Next-Day Movement:\s*/, "");
+    const anomalyText = rawAnomaly.replace(/^2\.\s*Volume Anomaly & Floorsheet Dynamics:\s*/, "");
+    const vwapText = rawVwap.replace(/^3\.\s*VWAP Accumulation Status:\s*/, "");
+
+    return { header, rawNews, rawAnomaly, rawVwap, newsText, anomalyText, vwapText };
+  }, [behaviorData?.written_findings, behaviorData?.symbol]);
+
+  if (!behaviorData) {
+    return (
+      <div className="card" style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+        Loading behavioral telemetry &amp; pattern synthesis...
+      </div>
+    );
+  }
 
   const {
     symbol,
@@ -45,23 +68,6 @@ export const BehaviorSummaryPanel = ({
 
   const isVwapBullish = vwap_delta_pct >= 0;
   const isPressureBullish = buy_sell_pressure_index >= 50;
-
-  // Dynamically parse Section 3 findings into structured pillars
-  const findingsParsed = useMemo(() => {
-    if (!written_findings) return null;
-    const lines = written_findings.split("\n").filter(l => l.trim().length > 0);
-    const header = lines.find(l => l.startsWith("Empirical Behavior Analysis")) || `Empirical Behavior Analysis for ${symbol}:`;
-    
-    const rawNews = lines.find(l => l.startsWith("1. News vs Next-Day Movement:")) || "";
-    const rawAnomaly = lines.find(l => l.startsWith("2. Volume Anomaly & Floorsheet Dynamics:")) || "";
-    const rawVwap = lines.find(l => l.startsWith("3. VWAP Accumulation Status:")) || "";
-
-    const newsText = rawNews.replace(/^1\.\s*News vs Next-Day Movement:\s*/, "");
-    const anomalyText = rawAnomaly.replace(/^2\.\s*Volume Anomaly & Floorsheet Dynamics:\s*/, "");
-    const vwapText = rawVwap.replace(/^3\.\s*VWAP Accumulation Status:\s*/, "");
-
-    return { header, rawNews, rawAnomaly, rawVwap, newsText, anomalyText, vwapText };
-  }, [written_findings, symbol]);
 
   const handleCopyFindings = () => {
     if (written_findings) {
