@@ -41,31 +41,30 @@ NEWS_TEMPLATES = [
 ]
 
 async def seed_database(db: AsyncSession):
-    # 1. Seed Users if not present
-    existing_users = await db.execute(select(func.count(User.id)))
-    if existing_users.scalar() == 0:
-        users = [
-            User(
-                email="admin@omway.com",
-                hashed_password=hash_password("admin123"),
-                full_name="Admin User",
-                role=UserRole.ADMIN.value
-            ),
-            User(
-                email="analyst@omway.com",
-                hashed_password=hash_password("analyst123"),
-                full_name="Market Analyst",
-                role=UserRole.ANALYST.value
-            ),
-            User(
-                email="viewer@omway.com",
-                hashed_password=hash_password("viewer123"),
-                full_name="Public Viewer",
-                role=UserRole.VIEWER.value
-            ),
-        ]
-        db.add_all(users)
-        await db.flush()
+    # 1. Guarantee canonical demo accounts have proper roles
+    canonical_users = [
+        ("admin@omway.com", "admin123", "Admin User", UserRole.ADMIN.value),
+        ("analyst@omway.com", "analyst123", "Market Analyst", UserRole.ANALYST.value),
+        ("viewer@omway.com", "viewer123", "Public Viewer", UserRole.VIEWER.value),
+    ]
+    for email, pwd, full_name, role_val in canonical_users:
+        u_query = select(User).where(User.email == email)
+        u_res = await db.execute(u_query)
+        user_obj = u_res.scalar_one_or_none()
+        if not user_obj:
+            db.add(User(
+                email=email,
+                hashed_password=hash_password(pwd),
+                full_name=full_name,
+                role=role_val,
+                is_active=True
+            ))
+        else:
+            if user_obj.role != role_val:
+                user_obj.role = role_val
+            if not user_obj.is_active:
+                user_obj.is_active = True
+    await db.flush()
 
 async def seed_single_company_telemetry(db: AsyncSession, comp: Company):
     """

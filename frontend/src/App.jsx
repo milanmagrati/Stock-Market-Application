@@ -331,6 +331,9 @@ function DashboardContent() {
               <BehaviorSummaryPanel 
                 behaviorData={behaviorData} 
                 onOpenExport={() => setShowExportModal(true)} 
+                onRefresh={handleManualRefresh}
+                isRefreshing={isRefreshing}
+                lastSyncedTime={lastSyncedTime}
               />
             </div>
 

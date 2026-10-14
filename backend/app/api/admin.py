@@ -153,6 +153,9 @@ async def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if user.email == "admin@omway.com" and role_in.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=400, detail="Cannot demote primary system administrator account 'admin@omway.com'")
+
     user.role = role_in.role
     await db.commit()
     await db.refresh(user)
@@ -174,6 +177,9 @@ async def delete_user(
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if user.email == "admin@omway.com":
+        raise HTTPException(status_code=400, detail="Cannot delete primary system administrator account 'admin@omway.com'")
 
     await db.delete(user)
     await db.commit()

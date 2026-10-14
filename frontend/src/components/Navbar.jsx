@@ -5,6 +5,8 @@ import {
   BarChart3, 
   Bot, 
   ShieldCheck, 
+  Shield,
+  Eye,
   Layers, 
   Sun, 
   Moon, 
@@ -17,7 +19,7 @@ import {
 } from "lucide-react";
 
 export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleTheme, onOpenExportModal }) => {
-  const { user, switchRole } = useAuth();
+  const { user, switchRole, isSwitching, switchToast } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSelectTab = (tab) => {
@@ -125,21 +127,36 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
             </button>
 
             {/* RBAC Role Switcher */}
-            <div className="rbac-switcher-container">
+            <div className="rbac-switcher-container" role="radiogroup" aria-label="Access Role Selector">
               <div className="rbac-label">
                 <ShieldCheck size={13} color="var(--ai-purple)" />
-                <span>Role:</span>
+                <span className="rbac-label-text">Role:</span>
               </div>
-              {DEMO_USERS.map((item) => (
-                <button
-                  key={item.role}
-                  onClick={() => switchRole(item.role)}
-                  className={`rbac-pill-btn ${user?.role === item.role ? "active" : ""}`}
-                  title={`Switch to ${item.label}`}
-                >
-                  {item.role}
-                </button>
-              ))}
+              {DEMO_USERS.map((item) => {
+                const isActive = user?.role === item.role;
+                const isItemSwitching = isSwitching === item.role;
+                return (
+                  <button
+                    key={item.role}
+                    type="button"
+                    onClick={() => switchRole(item.role)}
+                    className={`rbac-pill-btn role-${item.role.toLowerCase()} ${isActive ? "active" : ""}`}
+                    title={`Switch to ${item.label} (${item.desc})`}
+                    disabled={isItemSwitching}
+                  >
+                    {isItemSwitching ? (
+                      <span className="role-micro-spin" />
+                    ) : item.role === "Admin" ? (
+                      <Shield size={11} className="role-btn-icon" />
+                    ) : item.role === "Analyst" ? (
+                      <BarChart3 size={11} className="role-btn-icon" />
+                    ) : (
+                      <Eye size={11} className="role-btn-icon" />
+                    )}
+                    <span>{item.role}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Theme Toggle Button */}
@@ -161,6 +178,17 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
 
           {/* Mobile Right Controls: Theme Toggle + Menu Hamburger Button */}
           <div className="navbar-mobile-right">
+            {/* Quick Mobile Active Role Badge (tap to open role manager) */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="navbar-role-badge-mobile"
+              title={`Current Role: ${user?.role || "Viewer"} (Tap to change)`}
+              aria-label="Switch Role"
+            >
+              <ShieldCheck size={12} color="var(--ai-purple)" />
+              <span>{user?.role || "Viewer"}</span>
+            </button>
+
             {/* Mobile Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -189,6 +217,18 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
           </div>
         </div>
       </header>
+
+      {/* Dynamic Role Switch Notification Toast */}
+      {switchToast && (
+        <div className="role-switch-toast-wrapper">
+          <div className="role-switch-toast">
+            <span className={`live-dot role-dot-${switchToast.role.toLowerCase()}`} />
+            <span>
+              <strong>{switchToast.label}</strong> Active — {switchToast.desc}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Sticky Tab Segmented Bar (Always accessible with 1 tap on Mobile) */}
       <div className="navbar-mobile-subbar">
@@ -256,10 +296,18 @@ export const Navbar = ({ activeTab, setActiveTab, wsConnected, theme, toggleThem
                 {DEMO_USERS.map((item) => (
                   <button
                     key={item.role}
+                    type="button"
                     onClick={() => handleSelectRole(item.role)}
-                    className={`drawer-role-btn ${user?.role === item.role ? "active" : ""}`}
+                    className={`drawer-role-btn role-${item.role.toLowerCase()} ${user?.role === item.role ? "active" : ""}`}
                   >
-                    {item.role}
+                    {item.role === "Admin" ? (
+                      <Shield size={12} />
+                    ) : item.role === "Analyst" ? (
+                      <BarChart3 size={12} />
+                    ) : (
+                      <Eye size={12} />
+                    )}
+                    <span>{item.role}</span>
                   </button>
                 ))}
               </div>
